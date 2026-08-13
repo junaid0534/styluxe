@@ -1,4 +1,5 @@
-# online_clothes_store
+# styluxe
+
 
 A new Flutter project.
 
