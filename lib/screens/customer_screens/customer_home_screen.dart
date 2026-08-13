@@ -1,0 +1,1222 @@
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../theme/app_theme.dart';
+import 'product_detail_screen.dart';
+
+class CustomerHomeScreen extends StatefulWidget {
+  const CustomerHomeScreen({super.key});
+
+  @override
+  State<CustomerHomeScreen> createState() => _CustomerHomeScreenState();
+}
+
+class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
+  final supabase = Supabase.instance.client;
+
+  TextEditingController? _searchController;
+  FocusNode? _searchFocusNode;
+
+  String userName = "Customer";
+  String userEmail = "";
+  String? avatarUrl;
+
+  // Selected category state
+  String selectedCategory = "All";
+
+  // Categories list expanding to multi-category store
+  final List<Map<String, dynamic>> categoryList = [
+    {"name": "All", "icon": Icons.grid_view_rounded},
+    {"name": "Clothes", "icon": Icons.checkroom_rounded},
+    {"name": "Shoes", "icon": Icons.roller_skating_rounded},
+    {"name": "Bags", "icon": Icons.shopping_bag_outlined},
+    {"name": "Watches", "icon": Icons.watch_rounded},
+    {"name": "Accessories", "icon": Icons.auto_awesome_rounded},
+  ];
+
+  // Products state
+  List<Map<String, dynamic>> products = [];
+  List<Map<String, dynamic>> filteredProducts = [];
+  Set<String> wishlistIds = {};
+  bool isLoadingProducts = true;
+
+  // Realtime Notification State
+  int notificationCount = 0;
+  StreamSubscription<List<Map<String, dynamic>>>? _notificationSubscription;
+
+  // Navigation Bar Active Index
+  int currentNavIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController = TextEditingController();
+    _searchFocusNode = FocusNode();
+
+    fetchUserData();
+    _setupRealtimeNotifications();
+    fetchProducts();
+  }
+
+  @override
+  void dispose() {
+    _notificationSubscription?.cancel();
+    _searchController?.dispose();
+    _searchFocusNode?.dispose();
+    super.dispose();
+  }
+
+  // ================= FETCH USER DATA =================
+  Future<void> fetchUserData() async {
+    try {
+      final user = supabase.auth.currentUser;
+      if (user != null) {
+        setState(() {
+          userName = user.userMetadata?['name'] ??
+              user.email?.split('@')[0] ??
+              "Customer";
+          userEmail = user.email ?? "";
+          avatarUrl = user.userMetadata?['avatar_url'];
+        });
+      }
+    } catch (e) {
+      debugPrint("Error fetching user data: $e");
+    }
+  }
+
+  // ================= REALTIME NOTIFICATIONS =================
+  void _setupRealtimeNotifications() {
+    try {
+      final user = supabase.auth.currentUser;
+      if (user == null) return;
+
+      final notificationStream = supabase.from('notifications').stream(
+        primaryKey: ['id'],
+      );
+
+      _notificationSubscription = notificationStream.listen(
+        (data) {
+          if (!mounted) return;
+          final unread = data.where((n) {
+            return n['user_id'] == user.id && n['is_read'] == false;
+          }).toList();
+
+          setState(() {
+            notificationCount = unread.length;
+          });
+        },
+        onError: (error) => debugPrint("Notification stream error: $error"),
+      );
+    } catch (e) {
+      debugPrint("Realtime notification setup error: $e");
+    }
+  }
+
+  // ================= FETCH PRODUCTS FROM SUPABASE =================
+  Future<void> fetchProducts() async {
+    setState(() => isLoadingProducts = true);
+    try {
+      final data = await supabase
+          .from('products')
+          .select('*')
+          .order('created_at', ascending: false);
+
+      await fetchWishlist();
+
+      if (!mounted) return;
+
+      setState(() {
+        products = List<Map<String, dynamic>>.from(data);
+        _filterProducts();
+        isLoadingProducts = false;
+      });
+    } catch (e) {
+      debugPrint("Error fetching products: $e");
+      if (!mounted) return;
+      setState(() {
+        products = _getFallbackProducts();
+        _filterProducts();
+        isLoadingProducts = false;
+      });
+    }
+  }
+
+  // Fallback demo multi-category products if Supabase table is empty or loading
+  List<Map<String, dynamic>> _getFallbackProducts() {
+    return [
+      {
+        "id": "demo_1",
+        "name": "Gucci Ace Sneakers",
+        "category": "Shoes",
+        "price": 45000,
+        "rating": 4.8,
+        "reviews": 124,
+        "image_url": "https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=600&q=80",
+        "description": "Premium leather sneakers with signature stripe."
+      },
+      {
+        "id": "demo_2",
+        "name": "YSL Sac de Jour Bag",
+        "category": "Bags",
+        "price": 85000,
+        "rating": 4.9,
+        "reviews": 89,
+        "image_url": "https://images.unsplash.com/photo-1584917865442-de89df76afd3?auto=format&fit=crop&w=600&q=80",
+        "description": "Luxury structured black calfskin leather handbag."
+      },
+      {
+        "id": "demo_3",
+        "name": "Rolex Submariner Watch",
+        "category": "Watches",
+        "price": 285000,
+        "rating": 5.0,
+        "reviews": 340,
+        "image_url": "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=600&q=80",
+        "description": "Oystersteel luxury automatic chronograph watch."
+      },
+      {
+        "id": "demo_4",
+        "name": "Burberry Cotton Trench Coat",
+        "category": "Clothes",
+        "price": 62000,
+        "rating": 4.7,
+        "reviews": 65,
+        "image_url": "https://images.unsplash.com/photo-1591047139829-d91aecb6caea?auto=format&fit=crop&w=600&q=80",
+        "description": "Classic double-breasted honey trench coat."
+      },
+    ];
+  }
+
+  Future<void> fetchWishlist() async {
+    try {
+      final user = supabase.auth.currentUser;
+      if (user == null) return;
+      final data = await supabase
+          .from('wishlist')
+          .select('product_id')
+          .eq('user_id', user.id);
+      wishlistIds = (data as List)
+          .map((item) => item['product_id'].toString())
+          .toSet();
+    } catch (e) {
+      debugPrint("Wishlist fetch error: $e");
+    }
+  }
+
+  void _filterProducts() {
+    final query = (_searchController?.text ?? "").trim().toLowerCase();
+
+    filteredProducts = products.where((item) {
+      final name = (item['name'] ?? "").toString().toLowerCase();
+      final cat = (item['category'] ?? "").toString().toLowerCase();
+
+      final matchesQuery = query.isEmpty || name.contains(query) || cat.contains(query);
+
+      final matchesCategory = selectedCategory == "All" ||
+          cat == selectedCategory.toLowerCase() ||
+          _mapCategoryMatch(cat, selectedCategory);
+
+      return matchesQuery && matchesCategory;
+    }).toList();
+  }
+
+  bool _mapCategoryMatch(String productCategory, String selected) {
+    final pc = productCategory.toLowerCase();
+    final sc = selected.toLowerCase();
+
+    if (sc == "clothes") {
+      return pc.contains("shirt") || pc.contains("dress") || pc.contains("hoodie") || pc.contains("jacket") || pc.contains("jean") || pc.contains("suit");
+    }
+    if (sc == "shoes") {
+      return pc.contains("shoe") || pc.contains("sneaker") || pc.contains("boot") || pc.contains("footwear");
+    }
+    if (sc == "bags") {
+      return pc.contains("bag") || pc.contains("purse") || pc.contains("handbag") || pc.contains("wallet");
+    }
+    if (sc == "watches") {
+      return pc.contains("watch") || pc.contains("clock") || pc.contains("chronograph");
+    }
+    if (sc == "accessories") {
+      return pc.contains("accessory") || pc.contains("belt") || pc.contains("glasses") || pc.contains("ring");
+    }
+    return pc == sc;
+  }
+
+  void _handleSearch() {
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _filterProducts();
+    });
+  }
+
+  Future<void> _toggleWishlist(String productId) async {
+    final user = supabase.auth.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please login to manage wishlist")),
+      );
+      return;
+    }
+
+    final isFav = wishlistIds.contains(productId);
+    setState(() {
+      if (isFav) {
+        wishlistIds.remove(productId);
+      } else {
+        wishlistIds.add(productId);
+      }
+    });
+
+    try {
+      if (isFav) {
+        await supabase
+            .from('wishlist')
+            .delete()
+            .eq('user_id', user.id)
+            .eq('product_id', productId);
+      } else {
+        await supabase.from('wishlist').insert({
+          'user_id': user.id,
+          'product_id': productId,
+        });
+      }
+    } catch (e) {
+      debugPrint("Wishlist toggle error: $e");
+    }
+  }
+
+  // ================= BUILD UI =================
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      drawer: _buildModernDrawer(),
+      body: SafeArea(
+        child: CustomScrollView(
+          physics: const BouncingScrollPhysics(),
+          slivers: [
+            // ================= TOP HEADER BAR =================
+            SliverAppBar(
+              backgroundColor: Colors.white,
+              surfaceTintColor: Colors.white,
+              elevation: 0,
+              floating: true,
+              centerTitle: true,
+              leading: Builder(
+                builder: (context) => IconButton(
+                  tooltip: "Open Menu",
+                  icon: Container(
+                    height: 38,
+                    width: 38,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(11),
+                    ),
+                    child: const Icon(
+                      Icons.menu_rounded,
+                      color: AppColors.slateDark,
+                      size: 22,
+                    ),
+                  ),
+                  onPressed: () => Scaffold.of(context).openDrawer(),
+                ),
+              ),
+
+              // Center Brand Title: StyLuxe
+              title: RichText(
+                text: TextSpan(
+                  children: [
+                    TextSpan(
+                      text: "Sty",
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.slateDark,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    TextSpan(
+                      text: "Luxe",
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.primary,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              actions: [
+                // Notifications Icon with live counter
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    IconButton(
+                      tooltip: "Notifications",
+                      icon: Container(
+                        height: 38,
+                        width: 38,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(11),
+                        ),
+                        child: const Icon(
+                          Icons.notifications_outlined,
+                          color: AppColors.slateDark,
+                          size: 20,
+                        ),
+                      ),
+                      onPressed: () {
+                        Navigator.pushNamed(context, '/notifications');
+                      },
+                    ),
+                    if (notificationCount > 0)
+                      Positioned(
+                        right: 4,
+                        top: 4,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFEF4444),
+                            shape: BoxShape.circle,
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 16,
+                            minHeight: 16,
+                          ),
+                          child: Text(
+                            notificationCount > 9 ? "9+" : notificationCount.toString(),
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 9,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+
+                // Cart Icon
+                IconButton(
+                  tooltip: "Cart",
+                  icon: Container(
+                    height: 38,
+                    width: 38,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(11),
+                    ),
+                    child: const Icon(
+                      Icons.shopping_cart_outlined,
+                      color: AppColors.slateDark,
+                      size: 20,
+                    ),
+                  ),
+                  onPressed: () => Navigator.pushNamed(context, '/cart'),
+                ),
+                const SizedBox(width: 8),
+              ],
+            ),
+
+            // ================= MAIN CONTENT =================
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Search Bar & Filter
+                    _buildSearchBar(),
+
+                    const SizedBox(height: 18),
+
+                    // Multi-Category Chips Bar
+                    _buildCategoryChips(),
+
+                    const SizedBox(height: 20),
+
+                    // Promo Banner Carousel
+                    _buildPromoBanner(),
+
+                    const SizedBox(height: 22),
+
+                    // Section Header: Products
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          selectedCategory == "All"
+                              ? "Featured Products"
+                              : "$selectedCategory Collection",
+                          style: const TextStyle(
+                            fontSize: 19,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.slateDark,
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () {
+                            Navigator.pushNamed(context, '/select_customer_category');
+                          },
+                          child: const Text(
+                            "See All",
+                            style: TextStyle(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 14),
+                  ],
+                ),
+              ),
+            ),
+
+            // ================= PRODUCT GRID =================
+            if (isLoadingProducts)
+              const SliverToBoxAdapter(
+                child: Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(40.0),
+                    child: CircularProgressIndicator(color: AppColors.primary),
+                  ),
+                ),
+              )
+            else if (filteredProducts.isEmpty)
+              SliverToBoxAdapter(
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(40.0),
+                    child: Column(
+                      children: [
+                        const Icon(Icons.search_off_rounded, size: 48, color: AppColors.slateMuted),
+                        const SizedBox(height: 10),
+                        Text(
+                          "No products found in '$selectedCategory'",
+                          style: const TextStyle(
+                            color: AppColors.slateMuted,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              )
+            else
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(18, 0, 18, 20),
+                sliver: SliverGrid(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final item = filteredProducts[index];
+                      return _buildProductCard(item);
+                    },
+                    childCount: filteredProducts.length,
+                  ),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 14,
+                    mainAxisSpacing: 14,
+                    childAspectRatio: 0.58, // Tall portrait aspect ratio
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+      bottomNavigationBar: _buildFullWidthBottomNav(),
+    );
+  }
+
+  // ================= SEARCH BAR =================
+  Widget _buildSearchBar() {
+    return Container(
+      height: 48,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: TextField(
+        controller: _searchController,
+        focusNode: _searchFocusNode,
+        textInputAction: TextInputAction.search,
+        onSubmitted: (_) => _handleSearch(),
+        style: const TextStyle(
+          color: AppColors.slateDark,
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+        ),
+        decoration: InputDecoration(
+          hintText: "Search dresses, shoes, watches...",
+          hintStyle: const TextStyle(
+            color: AppColors.slateMuted,
+            fontSize: 13.5,
+          ),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(vertical: 14),
+          prefixIcon: const Icon(
+            Icons.search_rounded,
+            size: 20,
+            color: AppColors.slateMuted,
+          ),
+          suffixIcon: GestureDetector(
+            onTap: _handleSearch,
+            child: Container(
+              margin: const EdgeInsets.all(5),
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.tune_rounded,
+                size: 18,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ================= MULTI-CATEGORY CHIPS =================
+  Widget _buildCategoryChips() {
+    return SizedBox(
+      height: 40,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: categoryList.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final cat = categoryList[index];
+          final String catName = cat['name'];
+          final IconData icon = cat['icon'];
+          final bool isSelected = selectedCategory.toLowerCase() == catName.toLowerCase();
+
+          return GestureDetector(
+            onTap: () {
+              setState(() {
+                selectedCategory = catName;
+                _filterProducts();
+              });
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: isSelected ? AppColors.primary : Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isSelected ? AppColors.primary : const Color(0xFFE2E8F0),
+                  width: 1,
+                ),
+                boxShadow: isSelected
+                    ? [
+                        BoxShadow(
+                          color: AppColors.primary.withOpacity(0.25),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ]
+                    : [],
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    icon,
+                    size: 16,
+                    color: isSelected ? Colors.white : AppColors.slateMuted,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    catName,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                      color: isSelected ? Colors.white : AppColors.slateDark,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // ================= PROMO BANNER =================
+  Widget _buildPromoBanner() {
+    return Container(
+      width: double.infinity,
+      height: 140,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            AppColors.primary,
+            AppColors.primaryDark,
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withOpacity(0.28),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 6,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.20),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Text(
+                    "LIMITED OFFER",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  "Summer Luxe Sale",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const Text(
+                  "UP TO 50% OFF | All Categories",
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            flex: 4,
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.10),
+                      blurRadius: 10,
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.shopping_bag_outlined,
+                  color: AppColors.primary,
+                  size: 34,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ================= PRODUCT CARD =================
+  Widget _buildProductCard(Map<String, dynamic> item) {
+    final id = item['id']?.toString() ?? "";
+    final name = item['name']?.toString() ?? "Product";
+    final category = item['category']?.toString() ?? "General";
+
+    final num rawPrice = num.tryParse(item['price']?.toString() ?? "0") ?? 0;
+    // Format price strictly in PKR / Rs. (NO DOLLAR SIGN)
+    final String formattedPrice = "Rs. ${rawPrice.toStringAsFixed(0)}";
+
+    final String imageUrl = item['image_url']?.toString() ??
+        (item['image_urls'] is List && (item['image_urls'] as List).isNotEmpty
+            ? item['image_urls'][0].toString()
+            : "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=600&q=80");
+
+    final bool isFav = wishlistIds.contains(id);
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ProductDetailScreen(product: item),
+          ),
+        );
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Dedicated Portrait AspectRatio Image Box (0.90)
+            AspectRatio(
+              aspectRatio: 0.90,
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: ClipRRect(
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                      child: imageUrl.isNotEmpty
+                          ? Image.network(
+                              imageUrl,
+                              width: double.infinity,
+                              height: double.infinity,
+                              fit: BoxFit.cover,
+                              alignment: Alignment.topCenter,
+                              errorBuilder: (_, __, ___) => Container(
+                                color: const Color(0xFFF1F5F9),
+                                child: const Center(
+                                  child: Icon(Icons.image_not_supported_outlined, color: AppColors.slateMuted),
+                                ),
+                              ),
+                            )
+                          : Container(
+                              color: const Color(0xFFF1F5F9),
+                              child: const Center(
+                                child: Icon(Icons.image_not_supported_outlined, color: AppColors.slateMuted),
+                              ),
+                            ),
+                    ),
+                  ),
+
+                  // Category tag with Dark Glass Backdrop
+                  Positioned(
+                    top: 8,
+                    left: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.50),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        category,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // Wishlist heart button
+                  Positioned(
+                    top: 6,
+                    right: 6,
+                    child: GestureDetector(
+                      onTap: () => _toggleWishlist(id),
+                      child: Container(
+                        height: 30,
+                        width: 30,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.10),
+                              blurRadius: 6,
+                            ),
+                          ],
+                        ),
+                        child: Icon(
+                          isFav ? Icons.favorite : Icons.favorite_border,
+                          size: 16,
+                          color: isFav ? AppColors.roseRed : AppColors.slateMuted,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Details
+            Padding(
+              padding: const EdgeInsets.all(10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.slateDark,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+
+                  // Rating row
+                  Row(
+                    children: [
+                      const Icon(Icons.star_rounded, size: 14, color: Colors.amber),
+                      const SizedBox(width: 3),
+                      const Text(
+                        "4.8",
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.slateDark,
+                        ),
+                      ),
+                      Text(
+                        " (120)",
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          color: Colors.grey.shade500,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+
+                  // Price (Strictly Rs. formatted) & Add button
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        formattedPrice,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      Container(
+                        height: 26,
+                        width: 26,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.add_rounded,
+                          size: 18,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ================= FULL WIDTH BOTTOM NAV BAR =================
+  Widget _buildFullWidthBottomNav() {
+    return Container(
+      height: 64,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: const Border(
+          top: BorderSide(color: Color(0xFFE2E8F0), width: 1),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 16,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _navItem(icon: Icons.home_rounded, label: "Home", index: 0, route: '/customer_home'),
+            _navItem(icon: Icons.explore_outlined, label: "Explore", index: 1, route: '/shop_now'),
+            _navItem(icon: Icons.favorite_border_rounded, label: "Wishlist", index: 2, route: '/wishlist'),
+            _navItem(icon: Icons.shopping_cart_outlined, label: "Cart", index: 3, route: '/cart'),
+            _navItem(icon: Icons.person_outline_rounded, label: "Profile", index: 4, route: '/my_profile'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _navItem({
+    required IconData icon,
+    required String label,
+    required int index,
+    required String route,
+  }) {
+    final bool isSelected = currentNavIndex == index;
+
+    return GestureDetector(
+      onTap: () {
+        setState(() => currentNavIndex = index);
+        if (index != 0) {
+          Navigator.pushNamed(context, route);
+        }
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primary.withOpacity(0.12) : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              size: 22,
+              color: isSelected ? AppColors.primary : AppColors.slateMuted,
+            ),
+            if (isSelected) ...[
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ================= MODERN NAVIGATION DRAWER =================
+  Widget _buildModernDrawer() {
+    return Drawer(
+      backgroundColor: Colors.white,
+      child: Column(
+        children: [
+          // Drawer Header with User Profile Details
+          UserAccountsDrawerHeader(
+            margin: EdgeInsets.zero,
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppColors.primary,
+                  AppColors.primaryDark,
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            currentAccountPicture: CircleAvatar(
+              radius: 36,
+              backgroundColor: Colors.white,
+              backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl!) : null,
+              child: avatarUrl == null
+                  ? const Text(
+                      "S",
+                      style: TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary,
+                      ),
+                    )
+                  : null,
+            ),
+            accountName: Text(
+              userName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            accountEmail: Text(
+              userEmail.isEmpty ? "StyLuxe Customer" : userEmail,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 13,
+              ),
+            ),
+          ),
+
+          // Drawer Navigation Options
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+              children: [
+                _drawerTile(
+                  icon: Icons.home_rounded,
+                  title: "Home",
+                  onTap: () => Navigator.pop(context),
+                ),
+                _drawerTile(
+                  icon: Icons.grid_view_rounded,
+                  title: "Shop Categories",
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.pushNamed(context, '/select_customer_category');
+                  },
+                ),
+                _drawerTile(
+                  icon: Icons.receipt_long_outlined,
+                  title: "My Orders",
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.pushNamed(context, '/my_orders');
+                  },
+                ),
+                _drawerTile(
+                  icon: Icons.favorite_border_rounded,
+                  title: "Wishlist",
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.pushNamed(context, '/wishlist');
+                  },
+                ),
+                _drawerTile(
+                  icon: Icons.shopping_cart_outlined,
+                  title: "My Cart",
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.pushNamed(context, '/cart');
+                  },
+                ),
+                _drawerTile(
+                  icon: Icons.person_outline_rounded,
+                  title: "My Profile",
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.pushNamed(context, '/my_profile');
+                  },
+                ),
+                _drawerTile(
+                  icon: Icons.notifications_outlined,
+                  title: "Notifications",
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.pushNamed(context, '/notifications');
+                  },
+                ),
+              ],
+            ),
+          ),
+
+          const Divider(height: 1, color: Color(0xFFE2E8F0)),
+
+          // Logout Button
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 16),
+            child: ListTile(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              tileColor: AppColors.roseRed.withOpacity(0.08),
+              leading: const Icon(
+                Icons.logout_rounded,
+                color: AppColors.roseRed,
+              ),
+              title: const Text(
+                "Logout",
+                style: TextStyle(
+                  color: AppColors.roseRed,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              onTap: () async {
+                await supabase.auth.signOut();
+                if (mounted) {
+                  Navigator.pushReplacementNamed(context, '/login');
+                }
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _drawerTile({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: ListTile(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        leading: Icon(icon, color: AppColors.slateDark, size: 22),
+        title: Text(
+          title,
+          style: const TextStyle(
+            color: AppColors.slateDark,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        onTap: onTap,
+      ),
+    );
+  }
+}
