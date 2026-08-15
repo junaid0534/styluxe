@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../theme/app_theme.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -148,7 +149,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Profile updated successfully"),
-          backgroundColor: Color(0xFF22C55E),
+          backgroundColor: AppColors.primary,
         ),
       );
 
@@ -194,25 +195,22 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
 
-      // ================= SAME PREVIOUS APP BAR =================
+      // ================= PURE WHITE STYLUXE APP BAR =================
       appBar: AppBar(
-        backgroundColor: const Color(0xFFA8E063),
-        surfaceTintColor: const Color(0xFFA8E063),
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
         elevation: 0,
-        centerTitle: false,
-        toolbarHeight: kToolbarHeight,
-        iconTheme: const IconThemeData(
-          color: Color(0xFF111827),
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.slateDark, size: 18),
+          onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
           "Edit Profile",
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
           style: TextStyle(
-            color: Color(0xFF111827),
-            fontWeight: FontWeight.w900,
-            fontSize: 22,
-            letterSpacing: -0.3,
+            color: AppColors.slateDark,
+            fontWeight: FontWeight.w800,
+            fontSize: 18,
           ),
         ),
       ),
@@ -220,150 +218,118 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       body: isLoading
           ? const Center(
               child: CircularProgressIndicator(
-                color: Color(0xFF22C55E),
+                color: AppColors.primary,
               ),
             )
           : SafeArea(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 30),
-                child: Column(
-                  children: [
-                    // ================= PROFILE IMAGE CARD =================
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.fromLTRB(20, 26, 20, 24),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(30),
-                        gradient: const LinearGradient(
-                          colors: [
-                            Color(0xFF4F46E5),
-                            Color(0xFF7C3AED),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF6366F1).withValues(alpha: 0.24),
-                            blurRadius: 24,
-                            offset: const Offset(0, 14),
-                          ),
-                        ],
-                      ),
-                      child: Stack(
-                        children: [
-                          Positioned(
-                            right: -36,
-                            top: -42,
-                            child: _GlowCircle(
-                              size: 130,
-                              opacity: 0.12,
-                            ),
-                          ),
-                          Positioned(
-                            left: -44,
-                            bottom: -50,
-                            child: _GlowCircle(
-                              size: 145,
-                              opacity: 0.08,
-                            ),
-                          ),
-
-                          Column(
-                            children: [
-                              GestureDetector(
-                                onTap: _pickImage,
-                                child: Stack(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(4),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withValues(alpha: 0.22),
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                          color: Colors.white.withValues(alpha: 0.25),
-                                          width: 1,
-                                        ),
-                                      ),
-                                      child: CircleAvatar(
-                                        radius: 62,
-                                        backgroundColor: Colors.white,
-                                        backgroundImage: _profileImageProvider(),
-                                        child: _profileImageProvider() == null
-                                            ? Text(
-                                                _initial(),
-                                                style: const TextStyle(
-                                                  color: Color(0xFF4F46E5),
-                                                  fontSize: 38,
-                                                  fontWeight: FontWeight.w900,
-                                                ),
-                                              )
-                                            : null,
-                                      ),
-                                    ),
-                                    Positioned(
-                                      bottom: 4,
-                                      right: 4,
-                                      child: Container(
-                                        height: 38,
-                                        width: 38,
-                                        decoration: BoxDecoration(
-                                          color: const Color(0xFF22C55E),
-                                          shape: BoxShape.circle,
-                                          border: Border.all(
-                                            color: Colors.white,
-                                            width: 3,
-                                          ),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: Colors.black.withValues(alpha: 0.15),
-                                              blurRadius: 10,
-                                              offset: const Offset(0, 5),
-                                            ),
-                                          ],
-                                        ),
-                                        child: const Icon(
-                                          Icons.camera_alt_rounded,
-                                          color: Colors.white,
-                                          size: 19,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ).animate().scale(
-                                    duration: 500.ms,
-                                    curve: Curves.easeOutBack,
-                                  ),
-                              const SizedBox(height: 18),
-                              const Text(
-                                "Update Your Profile",
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: -0.4,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                "Tap image to change your profile picture",
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.82),
-                                  fontSize: 13.5,
-                                  fontWeight: FontWeight.w500,
-                                ),
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 800),
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                    child: Column(
+                      children: [
+                        // ================= STYLUXE THEME EMERALD PROFILE CARD =================
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary,
+                            borderRadius: BorderRadius.circular(26),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.primary.withValues(alpha: 0.28),
+                                blurRadius: 18,
+                                offset: const Offset(0, 8),
                               ),
                             ],
                           ),
+                          child: Column(
+                        children: [
+                          GestureDetector(
+                            onTap: _pickImage,
+                            child: Stack(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(3.5),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.white,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: CircleAvatar(
+                                    radius: 50,
+                                    backgroundColor: const Color(0xFFF1F5F9),
+                                    backgroundImage: _profileImageProvider(),
+                                    child: _profileImageProvider() == null
+                                        ? Text(
+                                            _initial(),
+                                            style: const TextStyle(
+                                              color: AppColors.primary,
+                                              fontSize: 32,
+                                              fontWeight: FontWeight.w900,
+                                            ),
+                                          )
+                                        : null,
+                                  ),
+                                ),
+                                Positioned(
+                                  bottom: 2,
+                                  right: 2,
+                                  child: Container(
+                                    height: 34,
+                                    width: 34,
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      shape: BoxShape.circle,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(alpha: 0.15),
+                                          blurRadius: 6,
+                                          offset: const Offset(0, 3),
+                                        ),
+                                      ],
+                                    ),
+                                    child: const Icon(
+                                      Icons.camera_alt_rounded,
+                                      color: AppColors.primary,
+                                      size: 18,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ).animate().scale(
+                                duration: 400.ms,
+                                curve: Curves.easeOutBack,
+                              ),
+                          const SizedBox(height: 16),
+                          const Text(
+                            "Update Your Profile",
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.3,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            "Tap picture to change your profile image",
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.90),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
                         ],
                       ),
-                    ).animate().fadeIn(duration: 350.ms).slideY(begin: 0.08),
+                    ).animate().fadeIn(duration: 350.ms),
 
-                    const SizedBox(height: 22),
+                    const SizedBox(height: 20),
 
                     // ================= FORM CARD =================
                     Container(
@@ -371,15 +337,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       padding: const EdgeInsets.all(18),
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(26),
+                        borderRadius: BorderRadius.circular(24),
                         border: Border.all(
-                          color: const Color(0xFFE5E7EB),
+                          color: const Color(0xFFE2E8F0),
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.045),
-                            blurRadius: 18,
-                            offset: const Offset(0, 10),
+                            color: Colors.black.withValues(alpha: 0.035),
+                            blurRadius: 16,
+                            offset: const Offset(0, 8),
                           ),
                         ],
                       ),
@@ -414,28 +380,28 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           ),
                         ],
                       ),
-                    ).animate().fadeIn(delay: 120.ms).slideY(begin: 0.08),
+                    ).animate().fadeIn(delay: 120.ms).slideY(begin: 0.06),
 
-                    const SizedBox(height: 26),
+                    const SizedBox(height: 24),
 
                     // ================= SAVE BUTTON =================
                     SizedBox(
                       width: double.infinity,
-                      height: 56,
+                      height: 52,
                       child: ElevatedButton(
                         onPressed: isSaving ? null : _saveProfile,
                         style: ElevatedButton.styleFrom(
                           elevation: 0,
-                          backgroundColor: const Color(0xFF22C55E),
-                          disabledBackgroundColor: Colors.grey.shade400,
+                          backgroundColor: AppColors.primary,
+                          disabledBackgroundColor: Colors.grey.shade300,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(18),
+                            borderRadius: BorderRadius.circular(16),
                           ),
                         ),
                         child: isSaving
                             ? const SizedBox(
-                                height: 24,
-                                width: 24,
+                                height: 22,
+                                width: 22,
                                 child: CircularProgressIndicator(
                                   color: Colors.white,
                                   strokeWidth: 2.4,
@@ -445,17 +411,19 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                 "SAVE PROFILE",
                                 style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 0.3,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.4,
                                 ),
                               ),
                       ),
-                    ).animate().fadeIn(delay: 220.ms).slideY(begin: 0.08),
+                    ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.06),
                   ],
                 ),
               ),
             ),
+          ),
+        ),
     );
   }
 
@@ -465,55 +433,34 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }) {
     return InputDecoration(
       labelText: label,
-      labelStyle: TextStyle(
-        color: Colors.grey.shade600,
-        fontWeight: FontWeight.w600,
+      labelStyle: const TextStyle(
+        color: AppColors.slateMuted,
+        fontWeight: FontWeight.w500,
+        fontSize: 13.5,
       ),
       prefixIcon: Icon(
         icon,
-        color: const Color(0xFF6366F1),
+        color: AppColors.primary,
+        size: 20,
       ),
       filled: true,
       fillColor: const Color(0xFFF8FAFC),
       contentPadding: const EdgeInsets.symmetric(
         horizontal: 16,
-        vertical: 18,
+        vertical: 16,
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         borderSide: const BorderSide(
-          color: Color(0xFFE5E7EB),
+          color: Color(0xFFE2E8F0),
         ),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         borderSide: const BorderSide(
-          color: Color(0xFF6366F1),
+          color: AppColors.primary,
           width: 1.5,
         ),
-      ),
-    );
-  }
-}
-
-// ================= GLOW CIRCLE =================
-class _GlowCircle extends StatelessWidget {
-  final double size;
-  final double opacity;
-
-  const _GlowCircle({
-    required this.size,
-    required this.opacity,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: size,
-      width: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.white.withValues(alpha: opacity),
       ),
     );
   }

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../theme/app_theme.dart';
-import 'product_detail_screen.dart';
+import '../../../theme/app_theme.dart';
+import '../product/product_detail_screen.dart';
 
 class ShopNowScreen extends StatefulWidget {
   const ShopNowScreen({super.key});
@@ -402,17 +402,8 @@ class _ShopNowScreenState extends State<ShopNowScreen> {
     }
   }
 
-  int _getCrossAxisCount(double width) {
-    if (width >= 1100) return 4;
-    if (width >= 760) return 3;
-    return 2;
-  }
-
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
-    final crossAxisCount = _getCrossAxisCount(width);
-
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
@@ -781,11 +772,11 @@ class _ShopNowScreenState extends State<ShopNowScreen> {
                             ),
                             padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
                             itemCount: filteredProducts.length,
-                            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: crossAxisCount,
-                              crossAxisSpacing: 14,
-                              mainAxisSpacing: 14,
-                              childAspectRatio: 0.58, // Tall card for portrait fashion photos
+                            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                              maxCrossAxisExtent: 180,
+                              mainAxisExtent: 240,
+                              crossAxisSpacing: 12,
+                              mainAxisSpacing: 12,
                             ),
                             itemBuilder: (context, index) {
                               final product = filteredProducts[index];
@@ -1018,42 +1009,50 @@ class ProductCardItem extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Dedicated Portrait AspectRatio Image Box (0.90)
+            // Dedicated Full Fit AspectRatio Image Box (1.20)
             AspectRatio(
-              aspectRatio: 0.90,
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: ClipRRect(
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                      child: imageUrl.isNotEmpty
-                          ? Image.network(
-                              imageUrl,
-                              width: double.infinity,
-                              height: double.infinity,
-                              fit: BoxFit.cover,
-                              alignment: Alignment.topCenter,
-                              errorBuilder: (_, _, _) => _placeholder(),
-                            )
-                          : _placeholder(),
+              aspectRatio: 1.20,
+              child: Container(
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(14)),
+                ),
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: ClipRRect(
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+                        child: Padding(
+                          padding: const EdgeInsets.all(3),
+                          child: imageUrl.isNotEmpty
+                              ? Image.network(
+                                  imageUrl,
+                                  width: double.infinity,
+                                  height: double.infinity,
+                                  fit: BoxFit.contain,
+                                  alignment: Alignment.center,
+                                  errorBuilder: (_, _, _) => _placeholder(),
+                                )
+                              : _placeholder(),
+                        ),
+                      ),
                     ),
-                  ),
 
                   // Category Badge with Dark Glass Backdrop
                   Positioned(
-                    top: 8,
-                    left: 8,
+                    top: 6,
+                    left: 6,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                       decoration: BoxDecoration(
                         color: Colors.black.withOpacity(0.50),
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: BorderRadius.circular(5),
                       ),
                       child: Text(
                         category,
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 9.5,
+                          fontSize: 9,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -1062,26 +1061,26 @@ class ProductCardItem extends StatelessWidget {
 
                   // Wishlist Heart Button
                   Positioned(
-                    top: 6,
-                    right: 6,
+                    top: 5,
+                    right: 5,
                     child: GestureDetector(
                       onTap: () => onWishlistToggle(product),
                       child: Container(
-                        height: 32,
-                        width: 32,
+                        height: 26,
+                        width: 26,
                         decoration: BoxDecoration(
                           color: Colors.white.withOpacity(0.92),
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
                               color: Colors.black.withOpacity(0.12),
-                              blurRadius: 6,
+                              blurRadius: 5,
                             ),
                           ],
                         ),
                         child: Icon(
                           isWishlisted ? Icons.favorite : Icons.favorite_border,
-                          size: 16,
+                          size: 14,
                           color: isWishlisted ? AppColors.roseRed : AppColors.slateDark,
                         ),
                       ),
@@ -1090,10 +1089,11 @@ class ProductCardItem extends StatelessWidget {
                 ],
               ),
             ),
+          ),
 
             // Product Details Section
             Padding(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

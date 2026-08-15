@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../theme/app_theme.dart';
+import '../../../theme/app_theme.dart';
 
 class OrderPlacedScreen extends StatefulWidget {
   final String orderId;

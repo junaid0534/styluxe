@@ -9,24 +9,8 @@ import 'screens/welcome_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/signup_screen.dart';
 // Customer Screens
-import 'screens/customer_screens/customer_home_screen.dart';
-import 'screens/customer_screens/shop_now_screen.dart';
-import 'screens/customer_screens/customer_category_screen.dart';
-import 'screens/customer_screens/cart_screen.dart';
-import 'screens/customer_screens/checkout_screen.dart';
-import 'screens/customer_screens/order_placed_screen.dart';
-import 'screens/customer_screens/my_orders_screen.dart';
-import 'screens/customer_screens/order_detail_screen.dart';
-import 'screens/customer_screens/order_tracking_screen.dart';
-import 'screens/customer_screens/notifications_screen.dart';
-import 'screens/customer_screens/wishlist_screen.dart';
-// Profile features screens
-import 'screens/customer_screens/profile_features/my_profile_screen.dart';
-import 'screens/customer_screens/profile_features/edit_profile_screen.dart';
-import 'screens/customer_screens/profile_features/shipping_addresses_screen.dart';
-import 'screens/customer_screens/profile_features/add_address_screen.dart';
-import 'screens/customer_screens/profile_features/change_password_screen.dart';
-import 'screens/customer_screens/profile_features/help_support_screen.dart';
+import 'screens/customer_screens/customer_screens.dart';
+
 // Seller Screens
 import 'screens/seller_screens/seller_home_screen.dart';
 import 'screens/seller_screens/add_product_screen.dart';
@@ -39,8 +23,6 @@ import 'screens/seller_screens/seller_revenue_screen.dart';
 import 'screens/seller_screens/total_customers_screen.dart';
 import 'screens/seller_screens/seller_analytics_screen.dart';
 import 'screens/seller_screens/seller_edit_profile_screen.dart';
-import 'screens/customer_screens/notification_detail_screen.dart';
-import 'screens/customer_screens/product_detail_screen.dart';
 
 import 'theme/app_theme.dart';
 

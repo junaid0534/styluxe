@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../theme/app_theme.dart';
+import '../../../theme/app_theme.dart';
 import 'order_placed_screen.dart';
 
 class CheckoutScreen extends StatefulWidget {
@@ -22,6 +22,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   final phoneController = TextEditingController();
   final cityController = TextEditingController();
   final addressController = TextEditingController();
+  final couponController = TextEditingController();
+
+  String appliedCouponCode = '';
+  double discountAmount = 0.0;
+  Map<String, dynamic>? activeCoupon;
 
   String selectedPaymentMethod = "Cash on Delivery";
 
@@ -44,6 +49,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     phoneController.dispose();
     cityController.dispose();
     addressController.dispose();
+    couponController.dispose();
     super.dispose();
   }
 
@@ -88,13 +94,188 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   // ================= CALCULATE TOTAL =================
   void calculateTotal() {
-    totalAmount = cartItems.fold(0.0, (sum, item) {
+    final double subtotal = cartItems.fold(0.0, (sum, item) {
       final product = item['products'] ?? {};
       final price = (product['price'] as num?)?.toDouble() ?? 0.0;
       final qty = (item['quantity'] as num?)?.toInt() ?? 1;
 
       return sum + (price * qty);
     });
+
+    if (activeCoupon != null) {
+      final discountType = activeCoupon!['discount_type']?.toString() ?? 'percentage';
+      final discountVal = (activeCoupon!['discount_value'] as num?)?.toDouble() ?? 0.0;
+      final minOrder = (activeCoupon!['min_order_amount'] as num?)?.toDouble() ?? 0.0;
+      final targetSellerId = activeCoupon!['seller_id']?.toString();
+
+      if (subtotal >= minOrder) {
+        double eligibleAmount = subtotal;
+
+        if (targetSellerId != null && targetSellerId.isNotEmpty) {
+          eligibleAmount = 0.0;
+          for (final item in cartItems) {
+            final product = item['products'] ?? {};
+            if (product['seller_id']?.toString() == targetSellerId) {
+              final price = (product['price'] as num?)?.toDouble() ?? 0.0;
+              final qty = (item['quantity'] as num?)?.toInt() ?? 1;
+              eligibleAmount += (price * qty);
+            }
+          }
+        }
+
+        if (discountType == 'percentage') {
+          discountAmount = (eligibleAmount * discountVal) / 100.0;
+          final maxDiscount = (activeCoupon!['max_discount_amount'] as num?)?.toDouble();
+          if (maxDiscount != null && maxDiscount > 0 && discountAmount > maxDiscount) {
+            discountAmount = maxDiscount;
+          }
+        } else if (discountType == 'fixed') {
+          discountAmount = discountVal;
+        }
+      } else {
+        discountAmount = 0.0;
+      }
+    } else {
+      discountAmount = 0.0;
+    }
+
+    if (discountAmount > subtotal) {
+      discountAmount = subtotal;
+    }
+
+    totalAmount = subtotal;
+  }
+
+  // ================= APPLY COUPON LOGIC =================
+  Future<void> applyCoupon(String code) async {
+    final cleanCode = code.trim().toUpperCase();
+    if (cleanCode.isEmpty) return;
+
+    try {
+      final data = await supabase
+          .from('coupons')
+          .select('*')
+          .eq('code', cleanCode)
+          .eq('is_active', true)
+          .maybeSingle();
+
+      if (data != null) {
+        final minOrder = (data['min_order_amount'] as num?)?.toDouble() ?? 0.0;
+        final subtotal = cartItems.fold(0.0, (sum, item) {
+          final product = item['products'] ?? {};
+          final price = (product['price'] as num?)?.toDouble() ?? 0.0;
+          final qty = (item['quantity'] as num?)?.toInt() ?? 1;
+          return sum + (price * qty);
+        });
+
+        if (subtotal < minOrder) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text("Order subtotal must be at least Rs. ${minOrder.toStringAsFixed(0)} for this coupon."),
+                backgroundColor: AppColors.roseRed,
+              ),
+            );
+          }
+          return;
+        }
+
+        setState(() {
+          activeCoupon = data;
+          appliedCouponCode = cleanCode;
+          calculateTotal();
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Coupon '$cleanCode' applied successfully!"),
+              backgroundColor: AppColors.primary,
+            ),
+          );
+        }
+        return;
+      }
+    } catch (_) {}
+
+    final Map<String, Map<String, dynamic>> builtInCoupons = {
+      "INDEPENDENCE14": {
+        "code": "INDEPENDENCE14",
+        "title": "14th August Special",
+        "discount_type": "percentage",
+        "discount_value": 14.0,
+        "min_order_amount": 500.0,
+      },
+      "SUMMER50": {
+        "code": "SUMMER50",
+        "title": "Summer Sale",
+        "discount_type": "percentage",
+        "discount_value": 50.0,
+        "max_discount_amount": 1000.0,
+        "min_order_amount": 1500.0,
+      },
+      "FLASHSALE500": {
+        "code": "FLASHSALE500",
+        "title": "Flash Discount",
+        "discount_type": "fixed",
+        "discount_value": 500.0,
+        "min_order_amount": 2000.0,
+      },
+      "FREESHIP": {
+        "code": "FREESHIP",
+        "title": "Free Delivery",
+        "discount_type": "fixed",
+        "discount_value": 99.0,
+        "min_order_amount": 1000.0,
+      },
+    };
+
+    if (builtInCoupons.containsKey(cleanCode)) {
+      final couponData = builtInCoupons[cleanCode]!;
+      final minOrder = (couponData['min_order_amount'] as num?)?.toDouble() ?? 0.0;
+      final subtotal = cartItems.fold(0.0, (sum, item) {
+        final product = item['products'] ?? {};
+        final price = (product['price'] as num?)?.toDouble() ?? 0.0;
+        final qty = (item['quantity'] as num?)?.toInt() ?? 1;
+        return sum + (price * qty);
+      });
+
+      if (subtotal < minOrder) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Order subtotal must be at least Rs. ${minOrder.toStringAsFixed(0)} for this coupon."),
+              backgroundColor: AppColors.roseRed,
+            ),
+          );
+        }
+        return;
+      }
+
+      setState(() {
+        activeCoupon = couponData;
+        appliedCouponCode = cleanCode;
+        calculateTotal();
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Coupon '$cleanCode' applied successfully!"),
+            backgroundColor: AppColors.primary,
+          ),
+        );
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Invalid or expired coupon code."),
+            backgroundColor: AppColors.roseRed,
+          ),
+        );
+      }
+    }
   }
 
   // ================= NOTIFICATION HELPER =================
@@ -342,6 +523,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                         const SizedBox(height: 18),
                                         _orderItemsCard(),
                                         const SizedBox(height: 18),
+                                        _promoCouponCard(),
+                                        const SizedBox(height: 18),
                                         _orderSummaryCard(),
                                       ],
                                     )
@@ -365,6 +548,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                                           child: Column(
                                             children: [
                                               _orderItemsCard(),
+                                              const SizedBox(height: 18),
+                                              _promoCouponCard(),
                                               const SizedBox(height: 18),
                                               _orderSummaryCard(),
                                             ],
@@ -724,10 +909,220 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
+  // ================= PROMO COUPON CARD =================
+  Widget _promoCouponCard() {
+    return _whiteCard(
+      title: "Promo Coupon & Voucher",
+      icon: Icons.local_offer_outlined,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (activeCoupon != null)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.check_circle_rounded, color: AppColors.primary, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Coupon '$appliedCouponCode' Applied!",
+                          style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w800, fontSize: 13.5),
+                        ),
+                        Text(
+                          "Saved Rs. ${discountAmount.toStringAsFixed(0)} on this order",
+                          style: const TextStyle(color: AppColors.slateMuted, fontSize: 11.5, fontWeight: FontWeight.w500),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded, color: AppColors.roseRed, size: 18),
+                    onPressed: () {
+                      setState(() {
+                        activeCoupon = null;
+                        appliedCouponCode = '';
+                        discountAmount = 0.0;
+                        couponController.clear();
+                        calculateTotal();
+                      });
+                    },
+                  ),
+                ],
+              ),
+            )
+          else
+            Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 48,
+                    child: TextField(
+                      controller: couponController,
+                      textCapitalization: TextCapitalization.characters,
+                      decoration: InputDecoration(
+                        hintText: "Enter Code (e.g. INDEPENDENCE14)",
+                        hintStyle: const TextStyle(color: AppColors.slateMuted, fontSize: 12.5),
+                        filled: true,
+                        fillColor: const Color(0xFFF8FAFC),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary)),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                ElevatedButton(
+                  onPressed: () => applyCoupon(couponController.text),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    minimumSize: const Size(80, 48),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text("Apply", style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13.5)),
+                ),
+              ],
+            ),
+          const SizedBox(height: 8),
+          TextButton.icon(
+            onPressed: () => _showAvailableCouponsSheet(context),
+            icon: const Icon(Icons.confirmation_number_outlined, color: AppColors.primary, size: 18),
+            label: const Text("View Available Promo Vouchers", style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w800, fontSize: 13)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAvailableCouponsSheet(BuildContext context) {
+    final availableList = [
+      {
+        "code": "INDEPENDENCE14",
+        "title": "14th August Special",
+        "desc": "FLAT 14% OFF on All Seller Collections",
+        "tag": "FLAT 14% OFF",
+      },
+      {
+        "code": "SUMMER50",
+        "title": "Summer Clearance Luxe",
+        "desc": "UPTO 50% OFF | Min. Order Rs. 1,500",
+        "tag": "UPTO 50% OFF",
+      },
+      {
+        "code": "FLASHSALE500",
+        "title": "Flash Voucher",
+        "desc": "FLAT Rs. 500 OFF | Min. Order Rs. 2,000",
+        "tag": "FLAT Rs. 500 OFF",
+      },
+      {
+        "code": "FREESHIP",
+        "title": "Free Delivery Voucher",
+        "desc": "Free Shipping Nationwide on Clothes",
+        "tag": "FREE SHIPPING",
+      },
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(color: const Color(0xFFCBD5E1), borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text("Available Promo Vouchers", style: TextStyle(color: AppColors.slateDark, fontSize: 18, fontWeight: FontWeight.w900)),
+              const Text("Tap 'Apply' to get instant discount on your order", style: TextStyle(color: AppColors.slateMuted, fontSize: 12, fontWeight: FontWeight.w500)),
+              const SizedBox(height: 16),
+              ...availableList.map((item) {
+                final String code = item['code']!;
+                final bool isAlreadyApplied = appliedCouponCode == code;
+
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isAlreadyApplied ? AppColors.primary.withValues(alpha: 0.08) : const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: isAlreadyApplied ? AppColors.primary : const Color(0xFFE2E8F0)),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.12),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.local_offer_rounded, color: AppColors.primary, size: 20),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(item['title']!, style: const TextStyle(color: AppColors.slateDark, fontWeight: FontWeight.w800, fontSize: 13.5)),
+                            const SizedBox(height: 2),
+                            Text(item['desc']!, style: const TextStyle(color: AppColors.slateMuted, fontSize: 11.5)),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          applyCoupon(code);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: isAlreadyApplied ? AppColors.slateMuted : AppColors.primary,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        child: Text(
+                          isAlreadyApplied ? "Applied" : "Apply",
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 12),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   // ================= PAYMENT SUMMARY =================
   Widget _orderSummaryCard() {
     const double deliveryCharge = 99.0;
-    final double grandTotal = totalAmount + deliveryCharge;
+    final double subtotal = totalAmount;
+    final double grandTotal = (subtotal + deliveryCharge) - discountAmount;
 
     return _whiteCard(
       title: "Payment Summary",
@@ -736,20 +1131,28 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         children: [
           _summaryRow(
             title: "Subtotal",
-            value: "Rs. ${totalAmount.toStringAsFixed(0)}",
+            value: "Rs. ${subtotal.toStringAsFixed(0)}",
           ),
           const SizedBox(height: 10),
           _summaryRow(
             title: "Delivery Charges",
             value: "Rs. ${deliveryCharge.toStringAsFixed(0)}",
           ),
+          if (discountAmount > 0) ...[
+            const SizedBox(height: 10),
+            _summaryRow(
+              title: "Promo Discount ($appliedCouponCode)",
+              value: "- Rs. ${discountAmount.toStringAsFixed(0)}",
+              isDiscount: true,
+            ),
+          ],
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 12),
             child: Divider(color: Color(0xFFE2E8F0)),
           ),
           _summaryRow(
             title: "Total Amount",
-            value: "Rs. ${grandTotal.toStringAsFixed(0)}",
+            value: "Rs. ${grandTotal < 0 ? 0 : grandTotal.toStringAsFixed(0)}",
             isTotal: true,
           ),
         ],
@@ -761,6 +1164,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     required String title,
     required String value,
     bool isTotal = false,
+    bool isDiscount = false,
   }) {
     return Row(
       children: [
@@ -768,16 +1172,24 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           child: Text(
             title,
             style: TextStyle(
-              color: isTotal ? AppColors.slateDark : AppColors.slateMuted,
+              color: isDiscount
+                  ? AppColors.primary
+                  : isTotal
+                      ? AppColors.slateDark
+                      : AppColors.slateMuted,
               fontSize: isTotal ? 15.5 : 13.5,
-              fontWeight: isTotal ? FontWeight.w800 : FontWeight.w500,
+              fontWeight: isTotal || isDiscount ? FontWeight.w800 : FontWeight.w500,
             ),
           ),
         ),
         Text(
           value,
           style: TextStyle(
-            color: isTotal ? AppColors.primary : AppColors.slateDark,
+            color: isDiscount
+                ? AppColors.primary
+                : isTotal
+                    ? AppColors.primary
+                    : AppColors.slateDark,
             fontSize: isTotal ? 19 : 14,
             fontWeight: FontWeight.w900,
           ),

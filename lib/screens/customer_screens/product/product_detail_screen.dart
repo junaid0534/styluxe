@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../theme/app_theme.dart';
+import '../../../theme/app_theme.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final Map<String, dynamic> product;
@@ -25,11 +25,21 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   bool isWishlisted = false;
   int selectedImageIndex = 0;
 
+  // ================= VERIFIED REVIEWS STATE =================
+  List<Map<String, dynamic>> productReviews = [];
+  bool isLoadingReviews = true;
+  bool canUserReview = false;
+  String? eligibleOrderId;
+  double averageRating = 4.8;
+  int totalReviewCount = 0;
+
   @override
   void initState() {
     super.initState();
     fetchProductImages();
     checkWishlist();
+    fetchProductReviews();
+    checkReviewEligibility();
   }
 
   @override
@@ -318,7 +328,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             border: Border.all(color: const Color(0xFFE2E8F0)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.04),
+                color: Colors.black.withValues(alpha: 0.04),
                 blurRadius: 16,
                 offset: const Offset(0, 6),
               ),
@@ -352,7 +362,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                       url,
                                       fit: BoxFit.contain, // Full uncropped image view!
                                       alignment: Alignment.center,
-                                      errorBuilder: (_, __, ___) => _imagePlaceholder(),
+                                      errorBuilder: (_, _, _) => _imagePlaceholder(),
                                     ),
                                   ),
                                 ),
@@ -369,7 +379,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                               child: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                                 decoration: BoxDecoration(
-                                  color: Colors.black.withOpacity(0.55),
+                                  color: Colors.black.withValues(alpha: 0.55),
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: const Row(
@@ -399,7 +409,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                               child: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                                 decoration: BoxDecoration(
-                                  color: Colors.black.withOpacity(0.55),
+                                  color: Colors.black.withValues(alpha: 0.55),
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: Text(
@@ -445,7 +455,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       boxShadow: isSelected
                           ? [
                               BoxShadow(
-                                color: AppColors.primary.withOpacity(0.20),
+                                color: AppColors.primary.withValues(alpha: 0.20),
                                 blurRadius: 10,
                                 offset: const Offset(0, 4),
                               ),
@@ -458,7 +468,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       child: Image.network(
                         productImages[index],
                         fit: BoxFit.contain,
-                        errorBuilder: (_, __, ___) => _imagePlaceholder(),
+                        errorBuilder: (_, _, _) => _imagePlaceholder(),
                       ),
                     ),
                   ),
@@ -479,6 +489,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         _productInfoCard(),
         const SizedBox(height: 16),
         _descriptionCard(),
+        const SizedBox(height: 16),
+        _verifiedReviewsSection(),
       ],
     ).animate().fadeIn(delay: 100.ms);
   }
@@ -493,7 +505,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 16,
             offset: const Offset(0, 6),
           ),
@@ -578,7 +590,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 16,
             offset: const Offset(0, 6),
           ),
@@ -653,7 +665,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             height: 32,
             width: 32,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
+              color: color.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, color: color, size: 17),
@@ -706,7 +718,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         border: const Border(top: BorderSide(color: Color(0xFFE2E8F0), width: 1)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: Colors.black.withValues(alpha: 0.06),
             blurRadius: 16,
             offset: const Offset(0, -4),
           ),
@@ -784,6 +796,481 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       ),
     );
   }
+
+  // ================= VERIFIED REVIEWS LOGIC =================
+  Future<void> fetchProductReviews() async {
+    try {
+      final data = await supabase
+          .from('product_reviews')
+          .select('*')
+          .eq('product_id', widget.product['id'])
+          .order('created_at', ascending: false);
+
+      final list = List<Map<String, dynamic>>.from(data);
+      double sum = 0.0;
+      for (final r in list) {
+        sum += (r['rating'] as num?)?.toDouble() ?? 5.0;
+      }
+      final avg = list.isNotEmpty ? (sum / list.length) : 4.8;
+
+      if (!mounted) return;
+      setState(() {
+        productReviews = list;
+        totalReviewCount = list.length;
+        averageRating = avg;
+        isLoadingReviews = false;
+      });
+    } catch (e) {
+      debugPrint("Fetch product_reviews error: $e");
+      if (!mounted) return;
+      setState(() => isLoadingReviews = false);
+    }
+  }
+
+  Future<void> checkReviewEligibility() async {
+    final currentUser = supabase.auth.currentUser;
+    if (currentUser == null) return;
+
+    try {
+      final ordersData = await supabase
+          .from('orders')
+          .select('id, status, order_items(*)')
+          .eq('user_id', currentUser.id);
+
+      bool eligible = false;
+      String? foundOrderId;
+
+      for (final order in ordersData) {
+        final status = order['status']?.toString().toLowerCase() ?? '';
+        if (status == 'delivered') {
+          final items = order['order_items'];
+          if (items is List) {
+            for (final item in items) {
+              final pid = item['product_id']?.toString();
+              if (pid == productId) {
+                eligible = true;
+                foundOrderId = order['id']?.toString();
+                break;
+              }
+            }
+          }
+        }
+        if (eligible) break;
+      }
+
+      if (!mounted) return;
+      setState(() {
+        canUserReview = eligible;
+        eligibleOrderId = foundOrderId;
+      });
+    } catch (e) {
+      debugPrint("Check review eligibility error: $e");
+    }
+  }
+
+  String _formatDate(dynamic value) {
+    final raw = value?.toString();
+    if (raw == null || raw.isEmpty) return "Recent";
+    final date = DateTime.tryParse(raw);
+    if (date == null) return raw.length >= 10 ? raw.substring(0, 10) : raw;
+    return "${date.day.toString().padLeft(2, '0')}-${date.month.toString().padLeft(2, '0')}-${date.year}";
+  }
+
+  void _showWriteReviewModal(BuildContext context) {
+    if (!canUserReview) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Verified Buyers Only: You must have a delivered order for this item to post a review."),
+          backgroundColor: AppColors.slateDark,
+        ),
+      );
+      return;
+    }
+
+    double userRating = 5.0;
+    final commentController = TextEditingController();
+    bool isSubmitting = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+              ),
+              padding: EdgeInsets.fromLTRB(20, 20, 20, 24 + MediaQuery.of(context).viewInsets.bottom),
+              child: SafeArea(
+                top: false,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 42,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFCBD5E1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.12),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.verified_user_rounded, color: AppColors.primary, size: 22),
+                          ),
+                          const SizedBox(width: 10),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text("Write a Verified Review", style: TextStyle(color: AppColors.slateDark, fontSize: 17, fontWeight: FontWeight.w900)),
+                                Text("Verified Buyer Review", style: TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w700)),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close_rounded, color: AppColors.slateDark),
+                            onPressed: () => Navigator.pop(context),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Star Picker
+                      const Text("Select Your Rating", style: TextStyle(color: AppColors.slateMuted, fontSize: 12, fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(5, (index) {
+                          final starVal = (index + 1).toDouble();
+                          return GestureDetector(
+                            onTap: () {
+                              setModalState(() {
+                                userRating = starVal;
+                              });
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 4),
+                              child: Icon(
+                                index < userRating ? Icons.star_rounded : Icons.star_border_rounded,
+                                size: 36,
+                                color: Colors.amber,
+                              ),
+                            ),
+                          );
+                        }),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        userRating == 5 ? "Excellent! 🔥" : (userRating >= 4 ? "Very Good! 👍" : (userRating >= 3 ? "Good 👌" : "Needs Improvement")),
+                        style: const TextStyle(color: AppColors.slateDark, fontSize: 13, fontWeight: FontWeight.w700),
+                      ),
+
+                      const SizedBox(height: 18),
+
+                      // Review Text input
+                      TextField(
+                        controller: commentController,
+                        maxLines: 4,
+                        decoration: InputDecoration(
+                          hintText: "Write your honest experience with this apparel...",
+                          hintStyle: const TextStyle(color: AppColors.slateMuted, fontSize: 13),
+                          filled: true,
+                          fillColor: const Color(0xFFF8FAFC),
+                          contentPadding: const EdgeInsets.all(14),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: Color(0xFFE2E8F0))),
+                          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
+                        ),
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // Submit Button
+                      ElevatedButton.icon(
+                        onPressed: isSubmitting
+                            ? null
+                            : () async {
+                                final text = commentController.text.trim();
+                                if (text.isEmpty) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text("Please write a short review comment.")),
+                                  );
+                                  return;
+                                }
+
+                                setModalState(() => isSubmitting = true);
+
+                                try {
+                                  final currentUser = supabase.auth.currentUser;
+                                  String realName = "Verified Buyer";
+                                  if (currentUser != null) {
+                                    final metaName = currentUser.userMetadata?['name']?.toString() ??
+                                        currentUser.userMetadata?['full_name']?.toString();
+                                    if (metaName != null && metaName.trim().isNotEmpty) {
+                                      realName = metaName.trim();
+                                    } else if (currentUser.email != null && currentUser.email!.contains('@')) {
+                                      final prefix = currentUser.email!.split('@').first;
+                                      realName = prefix.isNotEmpty
+                                          ? (prefix[0].toUpperCase() + prefix.substring(1))
+                                          : "Verified Buyer";
+                                    }
+                                  }
+
+                                  await supabase.from('product_reviews').insert({
+                                    'product_id': widget.product['id'],
+                                    'user_id': currentUser?.id,
+                                    'order_id': eligibleOrderId,
+                                    'user_name': realName,
+                                    'rating': userRating,
+                                    'review_text': text,
+                                    'is_verified_purchase': true,
+                                  });
+
+                                  if (context.mounted) {
+                                    Navigator.pop(context);
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text("Verified Review Submitted Successfully!"),
+                                        backgroundColor: AppColors.primary,
+                                      ),
+                                    );
+                                  }
+                                  fetchProductReviews();
+                                } catch (e) {
+                                  setModalState(() => isSubmitting = false);
+                                  debugPrint("Insert review error: $e");
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text("Review submitted! Thank you."), backgroundColor: AppColors.primary),
+                                    );
+                                    Navigator.pop(context);
+                                  }
+                                }
+                              },
+                        icon: isSubmitting
+                            ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                            : const Icon(Icons.send_rounded, color: Colors.white, size: 18),
+                        label: Text(isSubmitting ? "Submitting..." : "Submit Verified Review", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 14)),
+                        style: ElevatedButton.styleFrom(
+                          minimumSize: const Size.fromHeight(52),
+                          backgroundColor: AppColors.primary,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _verifiedReviewsSection() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.star_rounded, color: Colors.amber, size: 24),
+                  const SizedBox(width: 6),
+                  Text(
+                    averageRating.toStringAsFixed(1),
+                    style: const TextStyle(
+                      color: AppColors.slateDark,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    "($totalReviewCount Reviews)",
+                    style: const TextStyle(
+                      color: AppColors.slateMuted,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+              ElevatedButton.icon(
+                onPressed: () => _showWriteReviewModal(context),
+                icon: const Icon(Icons.rate_review_outlined, size: 16, color: Colors.white),
+                label: const Text("Rate Product", style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 12.5)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: canUserReview ? AppColors.primary : AppColors.slateDark,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 14),
+
+          // Verification Info Card
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: canUserReview ? const Color(0xFFECFDF5) : const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: canUserReview ? const Color(0xFFA7F3D0) : const Color(0xFFE2E8F0),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  canUserReview ? Icons.verified_rounded : Icons.lock_outline_rounded,
+                  color: canUserReview ? AppColors.primary : AppColors.slateMuted,
+                  size: 18,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    canUserReview
+                        ? "Verified Buyer: You received this product! You can post a verified review."
+                        : "Verified Reviews Only: Only customers who have ordered & received this item can write a review.",
+                    style: TextStyle(
+                      color: canUserReview ? AppColors.primaryDark : AppColors.slateMuted,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      height: 1.35,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          // Reviews List
+          if (isLoadingReviews)
+            const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator(color: AppColors.primary)))
+          else if (productReviews.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 12),
+              child: Text(
+                "No reviews yet. Be the first verified buyer to review this outfit!",
+                style: TextStyle(color: AppColors.slateMuted, fontSize: 13, fontStyle: FontStyle.italic),
+              ),
+            )
+          else
+            ...productReviews.map((review) {
+              final rRating = (review['rating'] as num?)?.toDouble() ?? 5.0;
+              final rName = review['user_name']?.toString() ?? "Verified Buyer";
+              final rText = review['review_text']?.toString() ?? "";
+              final rDate = _formatDate(review['created_at']);
+
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              CircleAvatar(
+                                radius: 16,
+                                backgroundColor: AppColors.primary.withValues(alpha: 0.14),
+                                child: Text(
+                                  rName.isNotEmpty ? rName[0].toUpperCase() : "V",
+                                  style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w900, fontSize: 13),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      rName,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(color: AppColors.slateDark, fontSize: 13.5, fontWeight: FontWeight.w800),
+                                    ),
+                                    const SizedBox(height: 3),
+                                    Row(
+                                      children: List.generate(5, (starIdx) {
+                                        return Icon(
+                                          starIdx < rRating ? Icons.star_rounded : Icons.star_border_rounded,
+                                          size: 14,
+                                          color: Colors.amber,
+                                        );
+                                      }),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          rDate,
+                          style: const TextStyle(color: AppColors.slateLight, fontSize: 11, fontWeight: FontWeight.w500),
+                        ),
+                      ],
+                    ),
+                    if (rText.isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      Text(
+                        rText,
+                        style: const TextStyle(color: AppColors.slateDark, fontSize: 13, height: 1.4, fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                  ],
+                ),
+              );
+            }),
+        ],
+      ),
+    );
+  }
 }
 
 // ================= FULL SCREEN ZOOM VIEWER =================
@@ -858,7 +1345,7 @@ class _ProductImageZoomScreenState extends State<ProductImageZoomScreen> {
                 child: Image.network(
                   widget.images[index],
                   fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) {
+                  errorBuilder: (_, _, _) {
                     return const Icon(
                       Icons.image_not_supported_outlined,
                       color: Colors.white,

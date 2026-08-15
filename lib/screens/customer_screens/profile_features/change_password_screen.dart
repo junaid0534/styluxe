@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import '../../../theme/app_theme.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -38,17 +39,17 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     if (currentPassword.isEmpty ||
         newPassword.isEmpty ||
         confirmPassword.isEmpty) {
-      _showMessage("Please fill all fields", Colors.red);
+      _showMessage("Please fill all password fields", Colors.red);
       return;
     }
 
     if (newPassword.length < 8) {
-      _showMessage("Password must be at least 8 characters", Colors.red);
+      _showMessage("Password must be at least 8 characters long", Colors.red);
       return;
     }
 
     if (newPassword != confirmPassword) {
-      _showMessage("Passwords do not match", Colors.red);
+      _showMessage("New passwords do not match", Colors.red);
       return;
     }
 
@@ -84,24 +85,25 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       );
 
       // ================= SEND NOTIFICATION =================
-      // Same simple structure as your old working code.
-      final response = await supabase.from('notifications').insert({
-        'user_id': userId,
-        'title': 'Password Changed Successfully',
-        'message': 'Your password has been updated successfully.',
-        'is_read': false,
-      }).select();
-
-      debugPrint("Password notification inserted: $response");
+      try {
+        await supabase.from('notifications').insert({
+          'user_id': userId,
+          'title': 'Password Changed Successfully',
+          'message': 'Your account password has been updated.',
+          'is_read': false,
+        });
+      } catch (e) {
+        debugPrint("Notification insert info: $e");
+      }
 
       if (!mounted) return;
 
       _showMessage(
-        "Password changed successfully",
-        const Color(0xFF22C55E),
+        "Password changed successfully. Please log in again.",
+        AppColors.primary,
       );
 
-      await Future.delayed(const Duration(seconds: 1));
+      await Future.delayed(const Duration(milliseconds: 1200));
 
       await supabase.auth.signOut();
 
@@ -128,7 +130,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       if (message.toLowerCase().contains("invalid")) {
         message = "Current password is incorrect";
       } else {
-        message = "Something went wrong: $e";
+        message = "Failed to change password. Please check current password.";
       }
 
       _showMessage(message, Colors.red);
@@ -156,132 +158,106 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
 
-      // ================= SAME PREVIOUS APP BAR =================
+      // ================= PURE WHITE STYLUXE APP BAR =================
       appBar: AppBar(
-        backgroundColor: const Color(0xFFA8E063),
-        surfaceTintColor: const Color(0xFFA8E063),
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
         elevation: 0,
-        centerTitle: false,
-        toolbarHeight: kToolbarHeight,
-        iconTheme: const IconThemeData(
-          color: Color(0xFF111827),
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.slateDark, size: 18),
+          onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
           "Change Password",
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
           style: TextStyle(
-            color: Color(0xFF111827),
-            fontWeight: FontWeight.w900,
-            fontSize: 22,
-            letterSpacing: -0.3,
+            color: AppColors.slateDark,
+            fontWeight: FontWeight.w800,
+            fontSize: 18,
           ),
         ),
       ),
 
       body: SafeArea(
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 30),
-          child: Column(
+        child: Align(
+          alignment: Alignment.topCenter,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 800),
+            child: SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+              child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ================= HEADER CARD =================
+              // ================= STYLUXE THEME EMERALD HEADER CARD =================
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [
-                      Color(0xFF4F46E5),
-                      Color(0xFF7C3AED),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(28),
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(24),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF6366F1).withValues(alpha: 0.24),
-                      blurRadius: 24,
-                      offset: const Offset(0, 14),
+                      color: AppColors.primary.withValues(alpha: 0.25),
+                      blurRadius: 18,
+                      offset: const Offset(0, 8),
                     ),
                   ],
                 ),
-                child: Stack(
+                child: Row(
                   children: [
-                    Positioned(
-                      right: -38,
-                      top: -42,
-                      child: _GlowCircle(
-                        size: 130,
-                        opacity: 0.12,
+                    Container(
+                      height: 54,
+                      width: 54,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.30),
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.lock_reset_rounded,
+                        color: Colors.white,
+                        size: 28,
                       ),
                     ),
-                    Positioned(
-                      left: -42,
-                      bottom: -48,
-                      child: _GlowCircle(
-                        size: 145,
-                        opacity: 0.08,
-                      ),
-                    ),
-                    Row(
-                      children: [
-                        Container(
-                          height: 62,
-                          width: 62,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.17),
-                            borderRadius: BorderRadius.circular(22),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.20),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            "Update Password",
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: -0.3,
                             ),
                           ),
-                          child: const Icon(
-                            Icons.lock_reset_rounded,
-                            color: Colors.white,
-                            size: 32,
+                          const SizedBox(height: 4),
+                          Text(
+                            "Ensure your account stays secure with a strong password.",
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.90),
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w500,
+                              height: 1.35,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                "Update Password",
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 23,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: -0.5,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                "Your new password must be at least 8 characters.",
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.84),
-                                  fontSize: 13.5,
-                                  fontWeight: FontWeight.w500,
-                                  height: 1.35,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ],
                 ),
-              ).animate().fadeIn(duration: 350.ms).slideY(begin: 0.08),
+              ).animate().fadeIn(duration: 350.ms).slideY(begin: 0.06),
 
-              const SizedBox(height: 22),
+              const SizedBox(height: 20),
 
               // ================= FORM CARD =================
               Container(
@@ -289,15 +265,15 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(26),
+                  borderRadius: BorderRadius.circular(24),
                   border: Border.all(
-                    color: const Color(0xFFE5E7EB),
+                    color: const Color(0xFFE2E8F0),
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.045),
-                      blurRadius: 18,
-                      offset: const Offset(0, 10),
+                      color: Colors.black.withValues(alpha: 0.035),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
                     ),
                   ],
                 ),
@@ -315,7 +291,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                             obscureCurrent
                                 ? Icons.visibility_off_outlined
                                 : Icons.visibility_outlined,
-                            color: Colors.grey.shade600,
+                            color: AppColors.slateMuted,
+                            size: 20,
                           ),
                           onPressed: () {
                             setState(() {
@@ -340,7 +317,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                             obscureNew
                                 ? Icons.visibility_off_outlined
                                 : Icons.visibility_outlined,
-                            color: Colors.grey.shade600,
+                            color: AppColors.slateMuted,
+                            size: 20,
                           ),
                           onPressed: () {
                             setState(() {
@@ -368,7 +346,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                             obscureConfirm
                                 ? Icons.visibility_off_outlined
                                 : Icons.visibility_outlined,
-                            color: Colors.grey.shade600,
+                            color: AppColors.slateMuted,
+                            size: 20,
                           ),
                           onPressed: () {
                             setState(() {
@@ -380,17 +359,17 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                     ),
                   ],
                 ),
-              ).animate().fadeIn(delay: 120.ms).slideY(begin: 0.08),
+              ).animate().fadeIn(delay: 120.ms).slideY(begin: 0.06),
 
-              const SizedBox(height: 18),
+              const SizedBox(height: 16),
 
-              // ================= PASSWORD NOTE =================
+              // ================= PASSWORD GUIDELINE NOTE =================
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   color: const Color(0xFFFFFBEB),
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(16),
                   border: Border.all(
                     color: const Color(0xFFFDE68A),
                   ),
@@ -401,15 +380,15 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                     const Icon(
                       Icons.info_outline_rounded,
                       color: Color(0xFFF59E0B),
-                      size: 22,
+                      size: 20,
                     ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        "Password instruction: at least 8 characters.",
+                        "Your new password must be at least 8 characters long for security.",
                         style: TextStyle(
-                          color: Colors.grey.shade800,
-                          fontSize: 13.2,
+                          color: Colors.amber.shade900,
+                          fontSize: 12.5,
                           fontWeight: FontWeight.w600,
                           height: 1.4,
                         ),
@@ -419,26 +398,26 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 ),
               ).animate().fadeIn(delay: 180.ms),
 
-              const SizedBox(height: 28),
+              const SizedBox(height: 24),
 
               // ================= CHANGE BUTTON =================
               SizedBox(
                 width: double.infinity,
-                height: 56,
+                height: 52,
                 child: ElevatedButton(
                   onPressed: isLoading ? null : _changePassword,
                   style: ElevatedButton.styleFrom(
                     elevation: 0,
-                    backgroundColor: const Color(0xFF22C55E),
-                    disabledBackgroundColor: Colors.grey.shade400,
+                    backgroundColor: AppColors.primary,
+                    disabledBackgroundColor: Colors.grey.shade300,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
+                      borderRadius: BorderRadius.circular(16),
                     ),
                   ),
                   child: isLoading
                       ? const SizedBox(
-                          height: 24,
-                          width: 24,
+                          height: 22,
+                          width: 22,
                           child: CircularProgressIndicator(
                             color: Colors.white,
                             strokeWidth: 2.4,
@@ -448,19 +427,21 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                           "CHANGE PASSWORD",
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 0.3,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.4,
                           ),
                         ),
                 ),
-              ).animate().fadeIn(delay: 240.ms).slideY(begin: 0.08),
+              ).animate().fadeIn(delay: 240.ms).slideY(begin: 0.06),
             ],
           ),
         ),
       ),
-    );
-  }
+    ),
+  ),
+);
+}
 
   // ================= INPUT DECORATION =================
   InputDecoration _inputDecoration({
@@ -470,56 +451,35 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   }) {
     return InputDecoration(
       labelText: label,
-      labelStyle: TextStyle(
-        color: Colors.grey.shade600,
-        fontWeight: FontWeight.w600,
+      labelStyle: const TextStyle(
+        color: AppColors.slateMuted,
+        fontWeight: FontWeight.w500,
+        fontSize: 13.5,
       ),
       prefixIcon: Icon(
         icon,
-        color: const Color(0xFF6366F1),
+        color: AppColors.primary,
+        size: 20,
       ),
       suffixIcon: suffix,
       filled: true,
       fillColor: const Color(0xFFF8FAFC),
       contentPadding: const EdgeInsets.symmetric(
         horizontal: 16,
-        vertical: 18,
+        vertical: 16,
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         borderSide: const BorderSide(
-          color: Color(0xFFE5E7EB),
+          color: Color(0xFFE2E8F0),
         ),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         borderSide: const BorderSide(
-          color: Color(0xFF6366F1),
+          color: AppColors.primary,
           width: 1.5,
         ),
-      ),
-    );
-  }
-}
-
-// ================= GLOW CIRCLE =================
-class _GlowCircle extends StatelessWidget {
-  final double size;
-  final double opacity;
-
-  const _GlowCircle({
-    required this.size,
-    required this.opacity,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: size,
-      width: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.white.withValues(alpha: opacity),
       ),
     );
   }

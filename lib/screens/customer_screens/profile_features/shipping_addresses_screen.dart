@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import '../../../theme/app_theme.dart';
 
 class ShippingAddressesScreen extends StatefulWidget {
   const ShippingAddressesScreen({super.key});
@@ -15,11 +17,57 @@ class _ShippingAddressesScreenState extends State<ShippingAddressesScreen> {
 
   List<Map<String, dynamic>> addresses = [];
   bool isLoading = true;
+  StreamSubscription<List<Map<String, dynamic>>>? _addressesSubscription;
 
   @override
   void initState() {
     super.initState();
     fetchAddresses();
+    setupRealtimeAddresses();
+  }
+
+  @override
+  void dispose() {
+    _addressesSubscription?.cancel();
+    super.dispose();
+  }
+
+  // ================= AUTO REFRESH / REALTIME ADDRESSES =================
+  void setupRealtimeAddresses() {
+    try {
+      final currentUser = supabase.auth.currentUser;
+      if (currentUser == null) return;
+
+      _addressesSubscription = supabase
+          .from('shipping_addresses')
+          .stream(primaryKey: ['id'])
+          .eq('user_id', currentUser.id)
+          .listen(
+            (data) {
+              if (!mounted) return;
+
+              final updated = List<Map<String, dynamic>>.from(data);
+              updated.sort((a, b) {
+                final aDef = a['is_default'] == true ? 1 : 0;
+                final bDef = b['is_default'] == true ? 1 : 0;
+                if (aDef != bDef) return bDef.compareTo(aDef);
+                final aDate = DateTime.tryParse(a['created_at']?.toString() ?? '') ?? DateTime(2000);
+                final bDate = DateTime.tryParse(b['created_at']?.toString() ?? '') ?? DateTime(2000);
+                return bDate.compareTo(aDate);
+              });
+
+              setState(() {
+                addresses = updated;
+                isLoading = false;
+              });
+            },
+            onError: (error) {
+              debugPrint("Realtime address error: $error");
+            },
+          );
+    } catch (e) {
+      debugPrint("Realtime setup error: $e");
+    }
   }
 
   // ================= FETCH ADDRESSES =================
@@ -84,20 +132,27 @@ class _ShippingAddressesScreenState extends State<ShippingAddressesScreen> {
       builder: (context) {
         return AlertDialog(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(22),
+            borderRadius: BorderRadius.circular(20),
           ),
-          title: const Text(
-            "Delete Address?",
-            style: TextStyle(
-              fontWeight: FontWeight.w900,
-              color: Color(0xFF111827),
-            ),
+          title: const Row(
+            children: [
+              Icon(Icons.delete_outline_rounded, color: AppColors.roseRed, size: 22),
+              SizedBox(width: 8),
+              Text(
+                "Delete Address?",
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.slateDark,
+                  fontSize: 18,
+                ),
+              ),
+            ],
           ),
           content: const Text(
-            "This action cannot be undone.",
+            "Are you sure you want to delete this address? This action cannot be undone.",
             style: TextStyle(
-              color: Color(0xFF4B5563),
-              fontWeight: FontWeight.w500,
+              color: AppColors.slateMuted,
+              fontSize: 13.5,
             ),
           ),
           actions: [
@@ -106,7 +161,8 @@ class _ShippingAddressesScreenState extends State<ShippingAddressesScreen> {
               child: const Text(
                 "Cancel",
                 style: TextStyle(
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.slateMuted,
                 ),
               ),
             ),
@@ -114,16 +170,16 @@ class _ShippingAddressesScreenState extends State<ShippingAddressesScreen> {
               onPressed: () => Navigator.pop(context, true),
               style: ElevatedButton.styleFrom(
                 elevation: 0,
-                backgroundColor: const Color(0xFFEF4444),
+                backgroundColor: AppColors.roseRed,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(12),
                 ),
               ),
               child: const Text(
                 "Delete",
                 style: TextStyle(
                   color: Colors.white,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ),
@@ -146,7 +202,7 @@ class _ShippingAddressesScreenState extends State<ShippingAddressesScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Address deleted successfully"),
-          backgroundColor: Color(0xFF22C55E),
+          backgroundColor: AppColors.primary,
         ),
       );
     } catch (e) {
@@ -170,81 +226,74 @@ class _ShippingAddressesScreenState extends State<ShippingAddressesScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
 
-      // ================= SAME PREVIOUS APP BAR =================
+      // ================= PURE WHITE STYLUXE APP BAR =================
       appBar: AppBar(
-        backgroundColor: const Color(0xFFA8E063),
-        surfaceTintColor: const Color(0xFFA8E063),
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
         elevation: 0,
-        centerTitle: false,
-        toolbarHeight: kToolbarHeight,
-        iconTheme: const IconThemeData(
-          color: Color(0xFF111827),
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.slateDark, size: 18),
+          onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
           "Shipping Addresses",
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
           style: TextStyle(
-            color: Color(0xFF111827),
-            fontWeight: FontWeight.w900,
-            fontSize: 22,
-            letterSpacing: -0.3,
+            color: AppColors.slateDark,
+            fontWeight: FontWeight.w800,
+            fontSize: 18,
           ),
         ),
         actions: [
           IconButton(
             tooltip: "Add Address",
             icon: const Icon(
-              Icons.add_rounded,
-              color: Color(0xFF111827),
-              size: 27,
+              Icons.add_location_alt_outlined,
+              color: AppColors.slateDark,
+              size: 22,
             ),
             onPressed: () => openAddAddress(),
           ),
-          IconButton(
-            tooltip: "Refresh",
-            icon: const Icon(
-              Icons.refresh_rounded,
-              color: Color(0xFF111827),
-            ),
-            onPressed: fetchAddresses,
-          ),
-          const SizedBox(width: 6),
+          const SizedBox(width: 8),
         ],
       ),
 
       body: isLoading
           ? const Center(
               child: CircularProgressIndicator(
-                color: Color(0xFF22C55E),
+                color: AppColors.primary,
               ),
             )
           : addresses.isEmpty
               ? _emptyAddressView()
               : RefreshIndicator(
                   onRefresh: fetchAddresses,
-                  color: const Color(0xFF22C55E),
-                  child: ListView(
-                    physics: const AlwaysScrollableScrollPhysics(
-                      parent: BouncingScrollPhysics(),
-                    ),
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
-                    children: [
-                      _summaryCard()
-                          .animate()
-                          .fadeIn(duration: 350.ms)
-                          .slideY(begin: 0.08, end: 0),
+                  color: AppColors.primary,
+                  child: Align(
+                    alignment: Alignment.topCenter,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 850),
+                      child: ListView(
+                        physics: const AlwaysScrollableScrollPhysics(
+                          parent: BouncingScrollPhysics(),
+                        ),
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
+                        children: [
+                          _summaryCard()
+                              .animate()
+                              .fadeIn(duration: 350.ms)
+                              .slideY(begin: 0.06, end: 0),
 
-                      const SizedBox(height: 18),
+                      const SizedBox(height: 20),
 
                       const Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
-                          "Saved Addresses",
+                          "Saved Locations",
                           style: TextStyle(
-                            color: Color(0xFF111827),
-                            fontSize: 18,
-                            fontWeight: FontWeight.w900,
+                            color: AppColors.slateDark,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
                             letterSpacing: -0.3,
                           ),
                         ),
@@ -262,34 +311,37 @@ class _ShippingAddressesScreenState extends State<ShippingAddressesScreen> {
                         )
                             .animate()
                             .fadeIn(
-                              duration: 350.ms,
-                              delay: (index * 70).ms,
+                              duration: 300.ms,
+                              delay: (index * 50).ms,
                             )
                             .slideY(
-                              begin: 0.08,
+                              begin: 0.05,
                               end: 0,
-                              duration: 350.ms,
-                              curve: Curves.easeOutCubic,
+                              duration: 300.ms,
                             );
                       }),
                     ],
                   ),
                 ),
+              ),
+            ),
 
       // ================= FLOATING ADD BUTTON =================
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => openAddAddress(),
-        backgroundColor: const Color(0xFF22C55E),
+        backgroundColor: AppColors.primary,
         elevation: 4,
         icon: const Icon(
           Icons.add_location_alt_outlined,
           color: Colors.white,
+          size: 20,
         ),
         label: const Text(
-          "Add Address",
+          "Add New Address",
           style: TextStyle(
             color: Colors.white,
-            fontWeight: FontWeight.w900,
+            fontWeight: FontWeight.w800,
+            fontSize: 14,
           ),
         ),
       ),
@@ -301,92 +353,65 @@ class _ShippingAddressesScreenState extends State<ShippingAddressesScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [
-            Color(0xFF4F46E5),
-            Color(0xFF7C3AED),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(28),
+        color: AppColors.primary,
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF6366F1).withValues(alpha: 0.24),
-            blurRadius: 22,
-            offset: const Offset(0, 12),
+            color: AppColors.primary.withValues(alpha: 0.25),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
-      child: Stack(
+      child: Row(
         children: [
-          Positioned(
-            right: -35,
-            top: -40,
-            child: _GlowCircle(
-              size: 125,
-              opacity: 0.12,
+          Container(
+            height: 52,
+            width: 52,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.30),
+              ),
+            ),
+            child: const Icon(
+              Icons.location_on_outlined,
+              color: Colors.white,
+              size: 28,
             ),
           ),
-          Positioned(
-            left: -40,
-            bottom: -45,
-            child: _GlowCircle(
-              size: 135,
-              opacity: 0.08,
-            ),
-          ),
-          Row(
-            children: [
-              Container(
-                height: 58,
-                width: 58,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.17),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.20),
+
+          const SizedBox(width: 14),
+
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "Address Book",
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.3,
                   ),
                 ),
-                child: const Icon(
-                  Icons.location_on_outlined,
-                  color: Colors.white,
-                  size: 30,
+                const SizedBox(height: 4),
+                Text(
+                  "${addresses.length} saved address${addresses.length == 1 ? '' : 'es'} • ${_defaultCount()} default",
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.88),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ),
-
-              const SizedBox(width: 14),
-
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      "Address Book",
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 21,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -0.4,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      "${addresses.length} saved address${addresses.length == 1 ? '' : 'es'} • ${_defaultCount()} default",
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.82),
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ],
       ),
@@ -399,20 +424,20 @@ class _ShippingAddressesScreenState extends State<ShippingAddressesScreen> {
         padding: const EdgeInsets.all(24),
         child: Container(
           width: double.infinity,
-          constraints: const BoxConstraints(maxWidth: 430),
+          constraints: const BoxConstraints(maxWidth: 420),
           padding: const EdgeInsets.symmetric(
             horizontal: 24,
-            vertical: 46,
+            vertical: 40,
           ),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(28),
+            borderRadius: BorderRadius.circular(24),
             border: Border.all(
-              color: const Color(0xFFE5E7EB),
+              color: const Color(0xFFE2E8F0),
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.045),
+                color: Colors.black.withValues(alpha: 0.04),
                 blurRadius: 18,
                 offset: const Offset(0, 10),
               ),
@@ -422,64 +447,63 @@ class _ShippingAddressesScreenState extends State<ShippingAddressesScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                height: 92,
-                width: 92,
+                height: 80,
+                width: 80,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF22C55E).withValues(alpha: 0.10),
+                  color: AppColors.primary.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
                   Icons.location_on_outlined,
-                  size: 50,
-                  color: Color(0xFF22C55E),
+                  size: 40,
+                  color: AppColors.primary,
                 ),
               ),
               const SizedBox(height: 18),
               const Text(
-                "No addresses saved yet",
+                "No Addresses Saved",
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: Color(0xFF111827),
-                  fontSize: 22,
+                  color: AppColors.slateDark,
+                  fontSize: 20,
                   fontWeight: FontWeight.w900,
                   letterSpacing: -0.4,
                 ),
               ),
               const SizedBox(height: 8),
-              Text(
+              const Text(
                 "Add your delivery address to make checkout faster.",
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: Colors.grey.shade600,
-                  fontSize: 14.5,
-                  fontWeight: FontWeight.w500,
+                  color: AppColors.slateMuted,
+                  fontSize: 13.5,
                   height: 1.45,
                 ),
               ),
               const SizedBox(height: 22),
               SizedBox(
                 width: double.infinity,
-                height: 50,
+                height: 46,
                 child: ElevatedButton.icon(
                   onPressed: () => openAddAddress(),
                   icon: const Icon(
                     Icons.add_location_alt_outlined,
                     color: Colors.white,
-                    size: 19,
+                    size: 18,
                   ),
                   label: const Text(
-                    "Add Address",
+                    "Add New Address",
                     style: TextStyle(
                       color: Colors.white,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
                     ),
                   ),
                   style: ElevatedButton.styleFrom(
                     elevation: 0,
-                    backgroundColor: const Color(0xFF22C55E),
+                    backgroundColor: AppColors.primary,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(17),
+                      borderRadius: BorderRadius.circular(14),
                     ),
                   ),
                 ),
@@ -528,18 +552,18 @@ class AddressCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(26),
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(
           color: isDefault
-              ? const Color(0xFF22C55E)
-              : const Color(0xFFE5E7EB),
+              ? AppColors.primary
+              : const Color(0xFFE2E8F0),
           width: isDefault ? 1.6 : 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 18,
-            offset: const Offset(0, 9),
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -552,22 +576,22 @@ class AddressCard extends StatelessWidget {
             Row(
               children: [
                 Container(
-                  height: 48,
-                  width: 48,
+                  height: 44,
+                  width: 44,
                   decoration: BoxDecoration(
                     color: isDefault
-                        ? const Color(0xFF22C55E).withValues(alpha: 0.11)
-                        : const Color(0xFF6366F1).withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(17),
+                        ? AppColors.primary.withValues(alpha: 0.12)
+                        : const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(14),
                   ),
                   child: Icon(
                     isDefault
                         ? Icons.verified_rounded
                         : Icons.location_on_outlined,
                     color: isDefault
-                        ? const Color(0xFF22C55E)
-                        : const Color(0xFF6366F1),
-                    size: 25,
+                        ? AppColors.primary
+                        : AppColors.slateDark,
+                    size: 22,
                   ),
                 ),
 
@@ -582,21 +606,21 @@ class AddressCard extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          color: Color(0xFF111827),
-                          fontSize: 16,
-                          fontWeight: FontWeight.w900,
+                          color: AppColors.slateDark,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
                           letterSpacing: -0.2,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 3),
                       Text(
                         phone.isEmpty ? "No phone number" : phone,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Colors.grey.shade600,
-                          fontSize: 12.8,
-                          fontWeight: FontWeight.w600,
+                        style: const TextStyle(
+                          color: AppColors.slateMuted,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],
@@ -607,37 +631,44 @@ class AddressCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,
-                      vertical: 6,
+                      vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF22C55E).withValues(alpha: 0.10),
+                      color: AppColors.primary.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(100),
                       border: Border.all(
-                        color: const Color(0xFF22C55E).withValues(alpha: 0.20),
+                        color: AppColors.primary.withValues(alpha: 0.30),
                       ),
                     ),
-                    child: const Text(
-                      "Default",
-                      style: TextStyle(
-                        color: Color(0xFF16A34A),
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w900,
-                      ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.star_rounded, color: AppColors.primary, size: 12),
+                        SizedBox(width: 3),
+                        Text(
+                          "Default",
+                          style: TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
               ],
             ),
 
-            const SizedBox(height: 14),
+            const SizedBox(height: 12),
 
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                  color: const Color(0xFFE5E7EB),
+                  color: const Color(0xFFE2E8F0),
                 ),
               ),
               child: Row(
@@ -645,10 +676,10 @@ class AddressCard extends StatelessWidget {
                 children: [
                   const Icon(
                     Icons.home_outlined,
-                    color: Color(0xFF4F46E5),
-                    size: 20,
+                    color: AppColors.slateMuted,
+                    size: 18,
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       [
@@ -656,10 +687,10 @@ class AddressCard extends StatelessWidget {
                         city,
                       ].where((item) => item.trim().isNotEmpty).join(", "),
                       style: const TextStyle(
-                        color: Color(0xFF374151),
-                        fontSize: 13.8,
+                        color: AppColors.slateDark,
+                        fontSize: 13,
                         fontWeight: FontWeight.w500,
-                        height: 1.45,
+                        height: 1.4,
                       ),
                     ),
                   ),
@@ -669,31 +700,30 @@ class AddressCard extends StatelessWidget {
 
             const SizedBox(height: 14),
 
+            // ================= ACTION BUTTONS (NO ICONS, INCREASED SIZE) =================
             Row(
               children: [
                 Expanded(
                   child: SizedBox(
-                    height: 42,
-                    child: OutlinedButton.icon(
+                    height: 46,
+                    child: OutlinedButton(
                       onPressed: onEdit,
-                      icon: const Icon(
-                        Icons.edit_outlined,
-                        size: 18,
-                      ),
-                      label: const Text(
-                        "Edit",
-                        overflow: TextOverflow.ellipsis,
-                      ),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF4F46E5),
                         side: const BorderSide(
-                          color: Color(0xFF4F46E5),
+                          color: Color(0xFFCBD5E1),
+                          width: 1.2,
                         ),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(15),
+                          borderRadius: BorderRadius.circular(14),
                         ),
-                        textStyle: const TextStyle(
+                      ),
+                      child: const Text(
+                        "Edit",
+                        style: TextStyle(
+                          color: AppColors.slateDark,
                           fontWeight: FontWeight.w800,
+                          fontSize: 14,
+                          letterSpacing: 0.2,
                         ),
                       ),
                     ),
@@ -704,29 +734,23 @@ class AddressCard extends StatelessWidget {
 
                 Expanded(
                   child: SizedBox(
-                    height: 42,
-                    child: ElevatedButton.icon(
+                    height: 46,
+                    child: ElevatedButton(
                       onPressed: onDelete,
-                      icon: const Icon(
-                        Icons.delete_outline_rounded,
-                        color: Colors.white,
-                        size: 18,
-                      ),
-                      label: const Text(
-                        "Delete",
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Colors.white,
-                        ),
-                      ),
                       style: ElevatedButton.styleFrom(
                         elevation: 0,
-                        backgroundColor: const Color(0xFFEF4444),
+                        backgroundColor: AppColors.roseRed,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(15),
+                          borderRadius: BorderRadius.circular(14),
                         ),
-                        textStyle: const TextStyle(
-                          fontWeight: FontWeight.w900,
+                      ),
+                      child: const Text(
+                        "Delete",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14,
+                          letterSpacing: 0.2,
                         ),
                       ),
                     ),
@@ -736,29 +760,6 @@ class AddressCard extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-// ================= GLOW CIRCLE =================
-class _GlowCircle extends StatelessWidget {
-  final double size;
-  final double opacity;
-
-  const _GlowCircle({
-    required this.size,
-    required this.opacity,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: size,
-      width: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.white.withValues(alpha: opacity),
       ),
     );
   }

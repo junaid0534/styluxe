@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import '../../theme/app_theme.dart';
+import '../../../theme/app_theme.dart';
 import 'order_detail_screen.dart';
 import 'order_tracking_screen.dart';
 
@@ -231,11 +231,15 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                 color: AppColors.primary,
               ),
             )
-          : CustomScrollView(
-              physics: const AlwaysScrollableScrollPhysics(
-                parent: BouncingScrollPhysics(),
-              ),
-              slivers: [
+          : Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 900),
+                child: CustomScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(
+                    parent: BouncingScrollPhysics(),
+                  ),
+                  slivers: [
                 // ================= TOP METRICS HEADER CARD =================
                 SliverToBoxAdapter(
                   child: Padding(
@@ -450,6 +454,8 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                       ),
               ],
             ),
+          ),
+        ),
       bottomNavigationBar: _buildFullWidthBottomNav(4),
     );
   }
@@ -997,7 +1003,7 @@ class OrderCard extends StatelessWidget {
                       title: "Items Count",
                       value: itemsList.isNotEmpty
                           ? "${itemsList.length} Item${itemsList.length > 1 ? 's' : ''}"
-                          : "1 Order",
+                          : "1 Item",
                       color: AppColors.slateDark,
                     ),
                   ),
