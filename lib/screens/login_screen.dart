@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import '../services/platform_settings_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -61,6 +62,7 @@ class _LoginScreenState extends State<LoginScreen>
       _showSnack(message: "Please fill all fields", bg: Colors.orange);
       return;
     }
+
     setState(() => isLoading = true);
     try {
       final AuthResponse response = await supabase.auth.signInWithPassword(email: email, password: password);
@@ -74,11 +76,58 @@ class _LoginScreenState extends State<LoginScreen>
         return;
       }
       final data = await supabase.from('users').select('role').eq('id', user.id).single();
-      final role = data['role'];
+      final role = data['role']?.toString().toLowerCase() ?? 'customer';
+
       if (!mounted) return;
-      if (role == 'seller') {
+
+      // Check Admin Privileges
+      const adminEmails = ['aliraza4025346@gmail.com'];
+      final isAdmin = adminEmails.contains(email.toLowerCase()) || role == 'admin' || role == 'super_admin';
+
+      // Enforce Platform Maintenance Mode for non-admins
+      if (!isAdmin) {
+        final isMaintenance = await PlatformSettingsService.isMaintenanceModeActive();
+        if (isMaintenance) {
+          await supabase.auth.signOut();
+          if (!mounted) return;
+          Navigator.pushReplacementNamed(context, '/maintenance');
+          setState(() => isLoading = false);
+          return;
+        }
+      }
+
+      if (!mounted) return;
+
+      // Designated Super Admin — route to admin dashboard
+      if (isAdmin) {
+        Navigator.pushReplacementNamed(context, '/super_admin');
+      } else if (role == 'seller') {
+        // Check if seller store is suspended / inactive
+        try {
+          final storeRes = await supabase
+              .from('seller_stores')
+              .select('is_active, store_name')
+              .eq('seller_id', user.id)
+              .maybeSingle();
+
+          if (storeRes != null && storeRes['is_active'] == false) {
+            await supabase.auth.signOut();
+            if (!mounted) return;
+            _showSnack(
+              message: "Account Suspended: Store '${storeRes['store_name'] ?? 'Your store'}' is deactivated by Admin.",
+              bg: const Color(0xFFBA1A1A),
+            );
+            setState(() => isLoading = false);
+            return;
+          }
+        } catch (e) {
+          debugPrint("Seller store status check note: $e");
+        }
+
+        if (!mounted) return;
         Navigator.pushReplacementNamed(context, '/seller');
       } else {
+        if (!mounted) return;
         Navigator.pushReplacementNamed(context, '/customer_home');
       }
     } on AuthException catch (e) {
@@ -193,7 +242,7 @@ class _LoginScreenState extends State<LoginScreen>
             color: _emerald,
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
-              BoxShadow(color: _emerald.withOpacity(0.25), blurRadius: 20, offset: const Offset(0, 8)),
+              BoxShadow(color: _emerald.withValues(alpha: 0.25), blurRadius: 20, offset: const Offset(0, 8)),
             ],
           ),
           child: const Icon(Icons.shopping_bag, color: Colors.white, size: 28),
@@ -230,7 +279,7 @@ class _LoginScreenState extends State<LoginScreen>
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: _border, width: 1.2),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 16, offset: const Offset(0, 4)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 16, offset: const Offset(0, 4)),
         ],
       ),
       child: Column(
@@ -287,7 +336,7 @@ class _LoginScreenState extends State<LoginScreen>
             const Expanded(child: Divider(color: _border)),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 10),
-              child: Text("OR", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: _gray.withOpacity(0.6))),
+              child: Text("OR", style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: _gray.withValues(alpha: 0.6))),
             ),
             const Expanded(child: Divider(color: _border)),
           ]),

@@ -14,7 +14,7 @@ class _SelectCategoryScreenState extends State<SelectCategoryScreen> {
   final Map<String, List<Map<String, dynamic>>> genderWiseCategories = {
     "Men": [
       {"name": "T-Shirt", "icon": Icons.checkroom},
-      {"name": "Shirt"},
+      {"name": "Shirt", "icon": Icons.iron},
       {"name": "Hoodie", "icon": Icons.local_mall},
       {"name": "Jeans", "icon": Icons.straighten},
       {"name": "Jacket", "icon": Icons.style},
@@ -28,11 +28,19 @@ class _SelectCategoryScreenState extends State<SelectCategoryScreen> {
       {"name": "Jacket", "icon": Icons.style},
       {"name": "Saree", "icon": Icons.woman_2},
     ],
-    "Unisex": [
-      {"name": "Hoodie", "icon": Icons.local_mall},
-      {"name": "T-Shirt", "icon": Icons.checkroom},
-      {"name": "Jeans", "icon": Icons.straighten},
-      {"name": "Jacket", "icon": Icons.style},
+    "Footwear": [
+      {"name": "Sneakers", "icon": Icons.directions_run},
+      {"name": "Formal Shoes", "icon": Icons.business_center},
+      {"name": "Heels & Sandals", "icon": Icons.woman},
+      {"name": "Boots", "icon": Icons.hiking},
+    ],
+    "Accessories": [
+      {"name": "Watches", "icon": Icons.watch},
+      {"name": "Bags & Backpacks", "icon": Icons.work},
+      {"name": "Jewelry", "icon": Icons.diamond},
+      {"name": "Perfumes", "icon": Icons.sanitizer},
+      {"name": "Electronics & Gadgets", "icon": Icons.headphones},
+      {"name": "Home & Decor", "icon": Icons.home},
     ],
   };
 
@@ -94,15 +102,15 @@ class _SelectCategoryScreenState extends State<SelectCategoryScreen> {
                       const SizedBox(height: 24),
 
                       GridView.count(
-                        crossAxisCount: 3,
+                        crossAxisCount: isMobile ? 2 : 4,
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
                         crossAxisSpacing: isSmallMobile ? 8 : 12,
                         mainAxisSpacing: isSmallMobile ? 8 : 12,
                         childAspectRatio: isSmallMobile
-                            ? 0.72
+                            ? 1.1
                             : isMobile
-                                ? 0.78
+                                ? 1.2
                                 : 1.45,
                         children: [
                           _genderCard(
@@ -124,12 +132,21 @@ class _SelectCategoryScreenState extends State<SelectCategoryScreen> {
                             ],
                           ),
                           _genderCard(
-                            "Unisex",
-                            Icons.people_alt_rounded,
-                            const Color(0xFF0F766E),
+                            "Footwear",
+                            Icons.directions_run_rounded,
+                            const Color(0xFFD97706),
                             const [
-                              Color(0xFF0F766E),
-                              Color(0xFF2DD4BF),
+                              Color(0xFFD97706),
+                              Color(0xFFFBBF24),
+                            ],
+                          ),
+                          _genderCard(
+                            "Accessories",
+                            Icons.local_mall_rounded,
+                            const Color(0xFF7C3AED),
+                            const [
+                              Color(0xFF7C3AED),
+                              Color(0xFFA78BFA),
                             ],
                           ),
                         ],

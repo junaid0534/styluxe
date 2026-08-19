@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -33,6 +34,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   double averageRating = 4.8;
   int totalReviewCount = 0;
 
+  StreamSubscription? _reviewsSubscription;
+
   @override
   void initState() {
     super.initState();
@@ -40,12 +43,28 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     checkWishlist();
     fetchProductReviews();
     checkReviewEligibility();
+    _subscribeRealtimeReviews();
   }
 
   @override
   void dispose() {
     _pageController.dispose();
+    _reviewsSubscription?.cancel();
     super.dispose();
+  }
+
+  void _subscribeRealtimeReviews() {
+    try {
+      _reviewsSubscription = supabase
+          .from('product_reviews')
+          .stream(primaryKey: ['id'])
+          .eq('product_id', widget.product['id'])
+          .listen((data) {
+            if (mounted) {
+              fetchProductReviews();
+            }
+          });
+    } catch (_) {}
   }
 
   String get productId => widget.product['id'].toString();
@@ -1027,15 +1046,71 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                     }
                                   }
 
-                                  await supabase.from('product_reviews').insert({
+                                  String? targetSellerId = widget.product['seller_id']?.toString() ?? widget.product['user_id']?.toString();
+                                  if (targetSellerId == null || targetSellerId.trim().isEmpty || targetSellerId == 'null') {
+                                    try {
+                                      final pRes = await supabase.from('products').select('seller_id').eq('id', widget.product['id']).maybeSingle();
+                                      if (pRes != null && pRes['seller_id'] != null) {
+                                        targetSellerId = pRes['seller_id'].toString();
+                                      }
+                                    } catch (e) {
+                                      debugPrint("Failed to fetch product seller_id: $e");
+                                    }
+                                  }
+
+                                  // Fallback: If product seller_id is still null, fetch active seller ID from sellers table
+                                  if (targetSellerId == null || targetSellerId.trim().isEmpty || targetSellerId == 'null') {
+                                    try {
+                                      final sRes = await supabase.from('sellers').select('id').limit(1).maybeSingle();
+                                      if (sRes != null && sRes['id'] != null) {
+                                        targetSellerId = sRes['id'].toString();
+                                      }
+                                    } catch (_) {}
+                                  }
+
+                                  final reviewRow = <String, dynamic>{
                                     'product_id': widget.product['id'],
                                     'user_id': currentUser?.id,
+                                    'seller_id': targetSellerId,
                                     'order_id': eligibleOrderId,
                                     'user_name': realName,
                                     'rating': userRating,
                                     'review_text': text,
                                     'is_verified_purchase': true,
-                                  });
+                                  };
+
+                                  await supabase.from('product_reviews').insert(reviewRow);
+
+                                  // Notify Seller about the new customer review!
+                                  if (targetSellerId != null && targetSellerId.trim().isNotEmpty && targetSellerId != 'null') {
+                                    try {
+                                      await supabase.from('notifications').insert({
+                                        'user_id': targetSellerId,
+                                        'title': 'New Customer Review! ⭐',
+                                        'message': '$realName left a ${userRating.toStringAsFixed(0)}-star review on "$name": "$text"',
+                                        'type': 'new_review',
+                                        'is_read': false,
+                                      });
+                                      debugPrint("SUCCESS: Seller notification inserted for $targetSellerId");
+                                    } catch (e) {
+                                      debugPrint("Seller notification RLS/Insert error: $e");
+                                    }
+                                  }
+
+                                  // Also notify Customer (Review Published confirmation)
+                                  if (currentUser?.id != null) {
+                                    try {
+                                      await supabase.from('notifications').insert({
+                                        'user_id': currentUser!.id,
+                                        'title': 'Review Published! ⭐',
+                                        'message': 'Your ${userRating.toStringAsFixed(0)}-star review on "$name" was posted.',
+                                        'type': 'new_review',
+                                        'is_read': false,
+                                      });
+                                    } catch (e) {
+                                      debugPrint("Customer confirmation notification error: $e");
+                                    }
+                                  }
 
                                   if (context.mounted) {
                                     Navigator.pop(context);
@@ -1196,6 +1271,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               final rText = review['review_text']?.toString() ?? "";
               final rDate = _formatDate(review['created_at']);
 
+              final rReply = review['seller_reply']?.toString();
+              final hasReply = rReply != null && rReply.trim().isNotEmpty;
+
               return Container(
                 margin: const EdgeInsets.only(bottom: 12),
                 padding: const EdgeInsets.all(14),
@@ -1261,6 +1339,37 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                       Text(
                         rText,
                         style: const TextStyle(color: AppColors.slateDark, fontSize: 13, height: 1.4, fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                    if (hasReply) ...[
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEFF6FF),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFFBFDBFE)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Row(
+                              children: [
+                                Icon(Icons.store_rounded, color: Color(0xFF2563EB), size: 15),
+                                SizedBox(width: 6),
+                                Text(
+                                  "Store Owner Response",
+                                  style: TextStyle(color: Color(0xFF2563EB), fontSize: 12, fontWeight: FontWeight.w900),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 5),
+                            Text(
+                              rReply,
+                              style: const TextStyle(color: AppColors.slateDark, fontSize: 12.5, fontWeight: FontWeight.w600, height: 1.35),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ],

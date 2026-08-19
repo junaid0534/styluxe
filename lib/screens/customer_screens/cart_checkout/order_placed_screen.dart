@@ -109,8 +109,8 @@ class _OrderPlacedScreenState extends State<OrderPlacedScreen> {
                     height: 90,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: AppColors.primary.withOpacity(0.12),
-                      border: Border.all(color: AppColors.primary.withOpacity(0.30), width: 2),
+                      color: AppColors.primary.withValues(alpha: 0.12),
+                      border: Border.all(color: AppColors.primary.withValues(alpha: 0.30), width: 2),
                     ),
                     child: Center(
                       child: Container(
@@ -161,7 +161,7 @@ class _OrderPlacedScreenState extends State<OrderPlacedScreen> {
                       border: Border.all(color: const Color(0xFFE2E8F0)),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.04),
+                          color: Colors.black.withValues(alpha: 0.04),
                           blurRadius: 18,
                           offset: const Offset(0, 8),
                         ),
@@ -204,7 +204,7 @@ class _OrderPlacedScreenState extends State<OrderPlacedScreen> {
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: AppColors.primary.withOpacity(0.20),
+                                  color: AppColors.primary.withValues(alpha: 0.20),
                                   borderRadius: BorderRadius.circular(20),
                                 ),
                                 child: Text(
@@ -474,7 +474,7 @@ class _OrderPlacedScreenState extends State<OrderPlacedScreen> {
         border: const Border(top: BorderSide(color: Color(0xFFE2E8F0), width: 1)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 16,
             offset: const Offset(0, -4),
           ),
@@ -515,7 +515,7 @@ class _OrderPlacedScreenState extends State<OrderPlacedScreen> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary.withOpacity(0.12) : Colors.transparent,
+          color: isSelected ? AppColors.primary.withValues(alpha: 0.12) : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(

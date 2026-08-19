@@ -12,17 +12,12 @@ import 'screens/signup_screen.dart';
 import 'screens/customer_screens/customer_screens.dart';
 
 // Seller Screens
-import 'screens/seller_screens/seller_home_screen.dart';
-import 'screens/seller_screens/add_product_screen.dart';
-import 'screens/seller_screens/my_products_screen.dart';
-import 'screens/seller_screens/manage_store_screen.dart';
-import 'screens/seller_screens/select_category_screen.dart';
-import 'screens/seller_screens/active_orders_screen.dart';
-import 'screens/seller_screens/seller_all_orders_screen.dart';
-import 'screens/seller_screens/seller_revenue_screen.dart';
-import 'screens/seller_screens/total_customers_screen.dart';
-import 'screens/seller_screens/seller_analytics_screen.dart';
-import 'screens/seller_screens/seller_edit_profile_screen.dart';
+import 'screens/seller_screens/seller_screens.dart';
+
+// Admin Screens
+import 'screens/admin_screens/admin_dashboard_screen.dart';
+import 'screens/admin_screens/admin_banners_screen.dart';
+import 'screens/maintenance_screen.dart';
 
 import 'theme/app_theme.dart';
 
@@ -50,6 +45,9 @@ class MyApp extends StatelessWidget {
         '/welcome': (context) => const WelcomeScreen(),
         '/login': (context) => const LoginScreen(),
         '/signup': (context) => const SignupScreen(),
+        '/super_admin': (context) => const SuperAdminDashboardScreen(),
+        '/admin_banners': (context) => const AdminBannersScreen(),
+        '/maintenance': (context) => const MaintenanceScreen(),
         // Customer Screens
         '/customer_home': (context) => const CustomerHomeScreen(),
         '/shop_now': (context) => const ShopNowScreen(),
@@ -88,6 +86,7 @@ class MyApp extends StatelessWidget {
         '/seller_revenue': (context) => const SellerRevenueScreen(),
         '/total_customers': (context) => const TotalCustomersScreen(),
         '/seller_analytics': (context) => const SellerAnalyticsScreen(),
+        '/seller_reviews': (context) => const SellerReviewsScreen(),
         '/seller_edit_profile': (context) => const SellerEditProfileScreen(),
       },
       onUnknownRoute: (settings) => MaterialPageRoute(

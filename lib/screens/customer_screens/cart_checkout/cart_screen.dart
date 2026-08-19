@@ -228,7 +228,7 @@ class _CartScreenState extends State<CartScreen> {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 16,
             offset: const Offset(0, -4),
           ),
@@ -269,7 +269,7 @@ class _CartScreenState extends State<CartScreen> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary.withOpacity(0.12) : Colors.transparent,
+          color: isSelected ? AppColors.primary.withValues(alpha: 0.12) : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
@@ -403,7 +403,7 @@ class _CartScreenState extends State<CartScreen> {
         border: const Border(top: BorderSide(color: Color(0xFFE2E8F0), width: 1)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: Colors.black.withValues(alpha: 0.06),
             blurRadius: 16,
             offset: const Offset(0, -4),
           ),
@@ -546,7 +546,7 @@ class CartItemCard extends StatelessWidget {
         border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -568,7 +568,7 @@ class CartItemCard extends StatelessWidget {
                       width: double.infinity,
                       height: double.infinity,
                       fit: BoxFit.contain, // Full image view!
-                      errorBuilder: (_, __, ___) => _imagePlaceholder(),
+                      errorBuilder: (_, _, _) => _imagePlaceholder(),
                     )
                   : _imagePlaceholder(),
             ),
@@ -705,7 +705,7 @@ class CartItemCard extends StatelessWidget {
         child: Icon(
           Icons.shopping_bag_outlined,
           size: 32,
-          color: AppColors.primary.withOpacity(0.60),
+          color: AppColors.primary.withValues(alpha: 0.60),
         ),
       ),
     );

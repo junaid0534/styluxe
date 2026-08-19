@@ -457,7 +457,7 @@ class _ShopNowScreenState extends State<ShopNowScreen> {
                         border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.03),
+                            color: Colors.black.withValues(alpha: 0.03),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
                           ),
@@ -507,8 +507,8 @@ class _ShopNowScreenState extends State<ShopNowScreen> {
                       boxShadow: [
                         BoxShadow(
                           color: selectedCategory == "All"
-                              ? Colors.black.withOpacity(0.03)
-                              : AppColors.primary.withOpacity(0.25),
+                              ? Colors.black.withValues(alpha: 0.03)
+                              : AppColors.primary.withValues(alpha: 0.25),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -597,8 +597,8 @@ class _ShopNowScreenState extends State<ShopNowScreen> {
                       boxShadow: [
                         BoxShadow(
                           color: _hasActivePriceFilter()
-                              ? AppColors.primary.withOpacity(0.25)
-                              : Colors.black.withOpacity(0.03),
+                              ? AppColors.primary.withValues(alpha: 0.25)
+                              : Colors.black.withValues(alpha: 0.03),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -812,7 +812,7 @@ class _ShopNowScreenState extends State<ShopNowScreen> {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 16,
             offset: const Offset(0, -4),
           ),
@@ -853,7 +853,7 @@ class _ShopNowScreenState extends State<ShopNowScreen> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary.withOpacity(0.12) : Colors.transparent,
+          color: isSelected ? AppColors.primary.withValues(alpha: 0.12) : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
@@ -999,7 +999,7 @@ class ProductCardItem extends StatelessWidget {
           border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.03),
+              color: Colors.black.withValues(alpha: 0.03),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -1045,7 +1045,7 @@ class ProductCardItem extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.50),
+                        color: Colors.black.withValues(alpha: 0.50),
                         borderRadius: BorderRadius.circular(5),
                       ),
                       child: Text(
@@ -1069,11 +1069,11 @@ class ProductCardItem extends StatelessWidget {
                         height: 26,
                         width: 26,
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.92),
+                          color: Colors.white.withValues(alpha: 0.92),
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.12),
+                              color: Colors.black.withValues(alpha: 0.12),
                               blurRadius: 5,
                             ),
                           ],

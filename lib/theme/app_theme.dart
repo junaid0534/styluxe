@@ -51,7 +51,7 @@ class AppColors {
 class AppShadows {
   static List<BoxShadow> subtle = [
     BoxShadow(
-      color: const Color(0xFF0F172A).withOpacity(0.04),
+      color: const Color(0xFF0F172A).withValues(alpha: 0.04),
       blurRadius: 12,
       offset: const Offset(0, 4),
     ),
@@ -59,7 +59,7 @@ class AppShadows {
 
   static List<BoxShadow> card = [
     BoxShadow(
-      color: const Color(0xFF0F172A).withOpacity(0.07),
+      color: const Color(0xFF0F172A).withValues(alpha: 0.07),
       blurRadius: 20,
       offset: const Offset(0, 6),
     ),
@@ -67,7 +67,7 @@ class AppShadows {
 
   static List<BoxShadow> floating = [
     BoxShadow(
-      color: const Color(0xFF0F172A).withOpacity(0.12),
+      color: const Color(0xFF0F172A).withValues(alpha: 0.12),
       blurRadius: 28,
       offset: const Offset(0, 10),
     ),
@@ -75,7 +75,7 @@ class AppShadows {
 
   static List<BoxShadow> primaryGlow = [
     BoxShadow(
-      color: AppColors.primary.withOpacity(0.35),
+      color: AppColors.primary.withValues(alpha: 0.35),
       blurRadius: 16,
       offset: const Offset(0, 6),
     ),
@@ -209,13 +209,64 @@ class AppTheme {
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
           elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          minimumSize: const Size(64, 46),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+          alignment: Alignment.center,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(14),
           ),
           textStyle: GoogleFonts.poppins(
-            fontSize: 16,
+            fontSize: 14,
             fontWeight: FontWeight.w600,
+            height: 1.2,
+          ),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: AppColors.primary,
+          elevation: 0,
+          minimumSize: const Size(64, 46),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+          alignment: Alignment.center,
+          side: const BorderSide(color: AppColors.borderColor, width: 1.2),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+          textStyle: GoogleFonts.poppins(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            height: 1.2,
+          ),
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          minimumSize: const Size(64, 46),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+          alignment: Alignment.center,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
+          textStyle: GoogleFonts.poppins(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            height: 1.2,
+          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: AppColors.primary,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+          alignment: Alignment.center,
+          textStyle: GoogleFonts.poppins(
+            fontSize: 13.5,
+            fontWeight: FontWeight.w600,
+            height: 1.2,
           ),
         ),
       ),

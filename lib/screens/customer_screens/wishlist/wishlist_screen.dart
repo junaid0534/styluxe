@@ -307,7 +307,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
         border: const Border(top: BorderSide(color: Color(0xFFE2E8F0), width: 1)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 16,
             offset: const Offset(0, -4),
           ),
@@ -348,7 +348,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary.withOpacity(0.12) : Colors.transparent,
+          color: isSelected ? AppColors.primary.withValues(alpha: 0.12) : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
@@ -391,7 +391,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.15),
+            color: Colors.black.withValues(alpha: 0.15),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -407,7 +407,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
               width: 120,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppColors.primary.withOpacity(0.15),
+                color: AppColors.primary.withValues(alpha: 0.15),
               ),
             ),
           ),
@@ -417,10 +417,10 @@ class _WishlistScreenState extends State<WishlistScreen> {
                 height: 56,
                 width: 56,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.20),
+                  color: AppColors.primary.withValues(alpha: 0.20),
                   borderRadius: BorderRadius.circular(18),
                   border: Border.all(
-                    color: AppColors.primary.withOpacity(0.40),
+                    color: AppColors.primary.withValues(alpha: 0.40),
                   ),
                 ),
                 child: const Icon(
@@ -485,7 +485,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.04),
+                color: Colors.black.withValues(alpha: 0.04),
                 blurRadius: 18,
                 offset: const Offset(0, 10),
               ),
@@ -498,7 +498,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
                 height: 86,
                 width: 86,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.12),
+                  color: AppColors.primary.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -672,7 +672,7 @@ class WishlistProductCard extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 14,
             offset: const Offset(0, 6),
           ),

@@ -167,7 +167,7 @@ class _SignupScreenState extends State<SignupScreen>
             color: _emerald,
             borderRadius: BorderRadius.circular(18),
             boxShadow: [
-              BoxShadow(color: _emerald.withOpacity(0.25), blurRadius: 20, offset: const Offset(0, 8)),
+              BoxShadow(color: _emerald.withValues(alpha: 0.25), blurRadius: 20, offset: const Offset(0, 8)),
             ],
           ),
           child: const Icon(Icons.shopping_bag_outlined, color: Colors.white, size: 28),
@@ -201,7 +201,7 @@ class _SignupScreenState extends State<SignupScreen>
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: _border, width: 1.2),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 16, offset: const Offset(0, 4)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 16, offset: const Offset(0, 4)),
         ],
       ),
       child: Form(
@@ -298,7 +298,7 @@ class _SignupScreenState extends State<SignupScreen>
           color: active ? Colors.white : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: active ? _emerald : Colors.transparent, width: 1.2),
-          boxShadow: active ? [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 4, offset: const Offset(0, 1))] : [],
+          boxShadow: active ? [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 4, offset: const Offset(0, 1))] : [],
         ),
         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
           Icon(icon, size: 16, color: active ? _emerald : _gray),

@@ -48,7 +48,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       final data = await supabase
           .from('notifications')
           .select('*')
-          .eq('user_id', currentUser.id)
+          .or('user_id.eq.${currentUser.id},user_id.is.null')
           .order('created_at', ascending: false);
 
       if (!mounted) return;
@@ -79,13 +79,17 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       _notificationSubscription = supabase
           .from('notifications')
           .stream(primaryKey: ['id'])
-          .eq('user_id', currentUser.id)
           .order('created_at', ascending: false)
           .listen(
             (data) {
               if (!mounted) return;
+              final userNotifs = data.where((item) {
+                final uid = item['user_id'];
+                return uid == null || uid == currentUser.id;
+              }).toList();
+
               setState(() {
-                notifications = List<Map<String, dynamic>>.from(data);
+                notifications = List<Map<String, dynamic>>.from(userNotifs);
                 isLoading = false;
               });
             },

@@ -4,8 +4,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 class CustomerCategoryScreen extends StatelessWidget {
   const CustomerCategoryScreen({super.key});
 
-  final List<_CategoryData> categories = const [
-    _CategoryData(
+  final List<CategoryData> categories = const [
+    CategoryData(
       name: "Dresses",
       icon: Icons.woman_rounded,
       gradientColors: [
@@ -14,7 +14,7 @@ class CustomerCategoryScreen extends StatelessWidget {
       ],
       shadowColor: Color.fromARGB(255, 49, 198, 104),
     ),
-    _CategoryData(
+    CategoryData(
       name: "Shirts",
       icon: Icons.shopping_bag_rounded,
       gradientColors: [
@@ -23,7 +23,7 @@ class CustomerCategoryScreen extends StatelessWidget {
       ],
       shadowColor: Color.fromARGB(255, 49, 198, 104),
     ),
-    _CategoryData(
+    CategoryData(
       name: "Hoodies",
       icon: Icons.local_mall_rounded,
       gradientColors: [
@@ -32,7 +32,7 @@ class CustomerCategoryScreen extends StatelessWidget {
       ],
       shadowColor: Color.fromARGB(255, 49, 198, 104),
     ),
-    _CategoryData(
+    CategoryData(
       name: "Jeans",
       icon: Icons.straighten_rounded,
       gradientColors: [
@@ -41,7 +41,7 @@ class CustomerCategoryScreen extends StatelessWidget {
       ],
       shadowColor: Color.fromARGB(255, 49, 198, 104),
     ),
-    _CategoryData(
+    CategoryData(
       name: "Jackets",
       icon: Icons.style_rounded,
       gradientColors: [
@@ -50,7 +50,7 @@ class CustomerCategoryScreen extends StatelessWidget {
       ],
       shadowColor: Color.fromARGB(255, 49, 198, 104),
     ),
-    _CategoryData(
+    CategoryData(
       name: "Kids Wear",
       icon: Icons.child_care_rounded,
       gradientColors: [
@@ -212,13 +212,13 @@ class CustomerCategoryScreen extends StatelessWidget {
 }
 
 // ================= CATEGORY DATA MODEL =================
-class _CategoryData {
+class CategoryData {
   final String name;
   final IconData icon;
   final List<Color> gradientColors;
   final Color shadowColor;
 
-  const _CategoryData({
+  const CategoryData({
     required this.name,
     required this.icon,
     required this.gradientColors,
@@ -228,7 +228,7 @@ class _CategoryData {
 
 // ================= CATEGORY CARD =================
 class CategoryCard extends StatelessWidget {
-  final _CategoryData category;
+  final CategoryData category;
   final VoidCallback onTap;
 
   const CategoryCard({super.key, 

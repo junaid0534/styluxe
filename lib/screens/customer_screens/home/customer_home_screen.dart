@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../theme/app_theme.dart';
+import '../../../services/banner_service.dart';
 import '../product/product_detail_screen.dart';
 
 class CustomerHomeScreen extends StatefulWidget {
@@ -106,7 +107,9 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
         (data) {
           if (!mounted) return;
           final unread = data.where((n) {
-            return n['user_id'] == user.id && n['is_read'] == false;
+            final uid = n['user_id'];
+            final isRead = n['is_read'];
+            return (uid == user.id || uid == null) && (isRead == false || isRead == null);
           }).toList();
 
           setState(() {
@@ -618,7 +621,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: categoryList.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (context, index) {
           final cat = categoryList[index];
           final String catName = cat['name'];
@@ -677,18 +680,20 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     );
   }
 
-  // ================= FETCH PROMO COUPONS =================
+  // ================= FETCH PROMO COUPONS & BANNERS =================
   Future<void> fetchCoupons() async {
     try {
-      final data = await supabase
-          .from('coupons')
-          .select('*')
-          .eq('is_active', true)
-          .order('created_at', ascending: false);
-
-      if (mounted && data.isNotEmpty) {
+      final activeBanners = await BannerService.fetchActiveBanners();
+      if (mounted && activeBanners.isNotEmpty) {
         setState(() {
-          promoCoupons = List<Map<String, dynamic>>.from(data);
+          promoCoupons = activeBanners.map((b) => {
+            "code": b.promoCode ?? 'STYLUXE',
+            "title": b.title,
+            "subtitle": b.subtitle,
+            "discount_tag": b.discountTag,
+            "bg_colors": b.gradientColors,
+            "icon": b.iconData,
+          }).toList();
         });
         return;
       }
@@ -696,40 +701,14 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
 
     if (mounted) {
       setState(() {
-        promoCoupons = [
-          {
-            "code": "INDEPENDENCE14",
-            "title": "14th August Special",
-            "subtitle": "FLAT 14% OFF on All Seller Collections",
-            "discount_tag": "FLAT 14% OFF",
-            "bg_colors": [const Color(0xFF047857), const Color(0xFF10B981)],
-            "icon": Icons.celebration_rounded,
-          },
-          {
-            "code": "SUMMER50",
-            "title": "Summer Clearance Luxe",
-            "subtitle": "UPTO 50% OFF | Selected Dresses & Shoes",
-            "discount_tag": "UPTO 50% OFF",
-            "bg_colors": [const Color(0xFF4338CA), const Color(0xFF6366F1)],
-            "icon": Icons.local_offer_rounded,
-          },
-          {
-            "code": "FLASHSALE500",
-            "title": "Flash Voucher",
-            "subtitle": "FLAT Rs. 500 OFF on Orders Above Rs. 2,000",
-            "discount_tag": "FLAT Rs. 500 OFF",
-            "bg_colors": [const Color(0xFFBE123C), const Color(0xFFF43F5E)],
-            "icon": Icons.bolt_rounded,
-          },
-          {
-            "code": "FREESHIP",
-            "title": "Free Delivery Voucher",
-            "subtitle": "Free Shipping Nationwide on Clothes",
-            "discount_tag": "FREE SHIPPING",
-            "bg_colors": [const Color(0xFF0F172A), const Color(0xFF334155)],
-            "icon": Icons.local_shipping_rounded,
-          },
-        ];
+        promoCoupons = BannerService.defaultBanners.map((b) => {
+          "code": b.promoCode ?? 'STYLUXE',
+          "title": b.title,
+          "subtitle": b.subtitle,
+          "discount_tag": b.discountTag,
+          "bg_colors": b.gradientColors,
+          "icon": b.iconData,
+        }).toList();
       });
     }
   }
@@ -990,7 +969,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                                   height: double.infinity,
                                   fit: BoxFit.contain,
                                   alignment: Alignment.center,
-                                  errorBuilder: (_, __, ___) => Container(
+                                  errorBuilder: (_, _, _) => Container(
                                     color: const Color(0xFFF1F5F9),
                                     child: const Center(
                                       child: Icon(Icons.image_not_supported_outlined, color: AppColors.slateMuted),
@@ -1150,7 +1129,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 16,
             offset: const Offset(0, -4),
           ),
@@ -1191,7 +1170,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary.withOpacity(0.12) : Colors.transparent,
+          color: isSelected ? AppColors.primary.withValues(alpha: 0.12) : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
@@ -1344,7 +1323,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
-              tileColor: AppColors.roseRed.withOpacity(0.08),
+              tileColor: AppColors.roseRed.withValues(alpha: 0.08),
               leading: const Icon(
                 Icons.logout_rounded,
                 color: AppColors.roseRed,
