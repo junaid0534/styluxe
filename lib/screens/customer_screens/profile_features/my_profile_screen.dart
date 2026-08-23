@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../theme/app_theme.dart';
+import '../../../services/session_service.dart';
+import '../../chat/inbox_screen.dart';
 
 class MyProfileScreen extends StatefulWidget {
   const MyProfileScreen({super.key});
@@ -108,9 +110,9 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
     if (confirm != true) return;
 
     try {
-      await supabase.auth.signOut();
+      await SessionService.clearSession();
       if (!mounted) return;
-      Navigator.pushReplacementNamed(context, '/login');
+      Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -140,6 +142,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
         elevation: 0,
+        toolbarHeight: 46.0,
         centerTitle: true,
         automaticallyImplyLeading: false,
         title: const Text(
@@ -147,7 +150,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
           style: TextStyle(
             color: AppColors.slateDark,
             fontWeight: FontWeight.w800,
-            fontSize: 18,
+            fontSize: 16.5,
           ),
         ),
       ),
@@ -160,251 +163,89 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
               child: Align(
                 alignment: Alignment.topCenter,
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 850),
+                  constraints: const BoxConstraints(maxWidth: 600),
                   child: SingleChildScrollView(
                     physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+                    padding: const EdgeInsets.fromLTRB(18, 12, 18, 28),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // ================= 1. HERO GRADIENT PROFILE CARD =================
-                        _gradientProfileCard().animate().fadeIn(duration: 350.ms).slideY(begin: 0.06, end: 0),
+                        // ================= 1. CLEAN PROFILE HEADER =================
+                        _buildProfileHeader().animate().fadeIn(duration: 350.ms).slideY(begin: 0.04, end: 0),
 
-                    const SizedBox(height: 16),
+                        const SizedBox(height: 16),
 
-                    // ================= 2. QUICK STATS ROW =================
-                    _quickStatsBar().animate().fadeIn(delay: 100.ms, duration: 350.ms),
+                        // ================= 2. 3 QUICK STAT METRIC CARDS =================
+                        _buildQuickStatCards().animate().fadeIn(delay: 80.ms, duration: 350.ms),
 
-                    const SizedBox(height: 24),
+                        const SizedBox(height: 20),
 
-                    // ================= 3. ACCOUNT SETTINGS =================
-                    _sectionHeader("ACCOUNT SETTINGS"),
-                    const SizedBox(height: 10),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(22),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.03),
-                            blurRadius: 16,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        children: [
-                          _profileRowItem(
-                            icon: Icons.receipt_long_outlined,
-                            iconBg: const Color(0xFFEFF6FF),
-                            iconColor: const Color(0xFF3B82F6),
-                            title: "My Orders",
-                            subtitle: "$ordersCount orders placed",
-                            badgeText: ordersCount > 0 ? "$ordersCount" : null,
-                            onTap: () => Navigator.pushNamed(context, '/my_orders'),
-                          ),
-                          const _DividerLine(),
-                          _profileRowItem(
-                            icon: Icons.person_outline_rounded,
-                            iconBg: const Color(0xFFF0FDF4),
-                            iconColor: const Color(0xFF10B981),
-                            title: "Edit Profile",
-                            subtitle: "Name, email & phone",
-                            onTap: () => Navigator.pushNamed(context, '/edit_profile'),
-                          ),
-                          const _DividerLine(),
-                          _profileRowItem(
-                            icon: Icons.local_shipping_outlined,
-                            iconBg: const Color(0xFFF5F3FF),
-                            iconColor: const Color(0xFF8B5CF6),
-                            title: "Shipping Addresses",
-                            subtitle: "Manage delivery locations",
-                            onTap: () => Navigator.pushNamed(context, '/shipping_addresses'),
-                          ),
-                          const _DividerLine(),
-                          _profileRowItem(
-                            icon: Icons.favorite_border_rounded,
-                            iconBg: const Color(0xFFFFF1F2),
-                            iconColor: const Color(0xFFF43F5E),
-                            title: "Wishlist",
-                            subtitle: "$wishlistCount items saved",
-                            onTap: () => Navigator.pushNamed(context, '/wishlist'),
-                          ),
-                          const _DividerLine(),
-                          _profileRowItem(
-                            icon: Icons.notifications_none_rounded,
-                            iconBg: const Color(0xFFFFFBEB),
-                            iconColor: const Color(0xFFF59E0B),
-                            title: "Notifications",
-                            subtitle: "Offers & order updates",
-                            onTap: () => Navigator.pushNamed(context, '/notifications'),
-                          ),
-                        ],
-                      ),
-                    ).animate().fadeIn(delay: 180.ms, duration: 350.ms),
+                        // ================= 3. NAVIGATION MENU LIST =================
+                        _buildMenuSection().animate().fadeIn(delay: 150.ms, duration: 350.ms),
 
-                    const SizedBox(height: 24),
+                        const SizedBox(height: 22),
 
-                    // ================= 4. SECURITY & SUPPORT =================
-                    _sectionHeader("SECURITY & SUPPORT"),
-                    const SizedBox(height: 10),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(22),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.03),
-                            blurRadius: 16,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        children: [
-                          _profileRowItem(
-                            icon: Icons.lock_outline_rounded,
-                            iconBg: const Color(0xFFECFDF5),
-                            iconColor: const Color(0xFF059669),
-                            arrowColor: const Color(0xFF10B981),
-                            title: "Change Password",
-                            subtitle: "Security & auth settings",
-                            onTap: () => Navigator.pushNamed(context, '/change_password'),
-                          ),
-                          const _DividerLine(),
-                          _profileRowItem(
-                            icon: Icons.help_outline_rounded,
-                            iconBg: const Color(0xFFECFDF5),
-                            iconColor: const Color(0xFF059669),
-                            arrowColor: const Color(0xFF10B981),
-                            title: "Help & Support",
-                            subtitle: "FAQs, contact & live help",
-                            onTap: () => Navigator.pushNamed(context, '/help_support'),
-                          ),
-                        ],
-                      ),
-                    ).animate().fadeIn(delay: 260.ms, duration: 350.ms),
+                        // ================= 4. COMPACT LOGOUT PILL BUTTON =================
+                        _buildLogoutButton().animate().fadeIn(delay: 220.ms, duration: 350.ms),
 
-                    const SizedBox(height: 28),
+                        const SizedBox(height: 18),
 
-                    // ================= 5. LOGOUT BUTTON =================
-                    Container(
-                      width: double.infinity,
-                      height: 52,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFF1F2),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: const Color(0xFFFECDD3)),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFFBE123C).withValues(alpha: 0.05),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: InkWell(
-                        onTap: logout,
-                        borderRadius: BorderRadius.circular(16),
-                        child: const Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.output_rounded, color: Color(0xFFBE123C), size: 20),
-                            SizedBox(width: 8),
-                            Text(
-                              "Logout",
-                              style: TextStyle(
-                                color: Color(0xFFBE123C),
-                                fontSize: 15,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ).animate().fadeIn(delay: 320.ms, duration: 350.ms),
-
-                    const SizedBox(height: 24),
-
-                    // ================= FOOTER VERSION =================
-                    Center(
-                      child: Column(
-                        children: [
-                          Text(
-                            "StyLuxe Fashion Store v2.4.0",
+                        // ================= 5. FOOTER =================
+                        Center(
+                          child: Text(
+                            "StyLuxe v2.4.0 • Luxury & Lifestyle",
                             style: TextStyle(
-                              color: AppColors.slateMuted.withValues(alpha: 0.70),
-                              fontSize: 12,
+                              color: AppColors.slateMuted.withValues(alpha: 0.6),
+                              fontSize: 11,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            "Designed with Elegance & Excellence",
-                            style: TextStyle(
-                              color: AppColors.slateMuted.withValues(alpha: 0.50),
-                              fontSize: 11,
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
-          ),
-        ),
       bottomNavigationBar: _buildFullWidthBottomNav(4),
     );
   }
 
-  // ================= 1. GRADIENT PROFILE CARD =================
-  Widget _gradientProfileCard() {
+  // ================= 1. CLEAN PROFILE HEADER (APP GREEN) =================
+  Widget _buildProfileHeader() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
+      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(28),
         gradient: const LinearGradient(
           colors: [
-            Color(0xFF10B981), // Emerald Teal
-            Color(0xFF34D399), // Mint Accent
-            Color(0xFFE0F2FE), // Soft Icy Sky Blue
+            AppColors.primary,
+            AppColors.primaryDark,
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
+        borderRadius: BorderRadius.circular(22),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF10B981).withValues(alpha: 0.22),
-            blurRadius: 22,
-            offset: const Offset(0, 10),
+            color: AppColors.primary.withValues(alpha: 0.25),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
       child: Column(
         children: [
-          // Avatar with Verified Badge
+          // Circular Avatar with Camera/Edit Badge
           Stack(
             children: [
               Container(
-                padding: const EdgeInsets.all(4),
+                padding: const EdgeInsets.all(3),
                 decoration: const BoxDecoration(
-                  color: Colors.white,
                   shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black12,
-                      blurRadius: 10,
-                      offset: Offset(0, 4),
-                    ),
-                  ],
+                  color: Colors.white,
                 ),
                 child: CircleAvatar(
-                  radius: 44,
+                  radius: 38,
                   backgroundColor: const Color(0xFFF1F5F9),
                   backgroundImage: avatarUrl != null && avatarUrl!.isNotEmpty
                       ? NetworkImage(avatarUrl!)
@@ -413,85 +254,87 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
                       ? Text(
                           _getInitials(),
                           style: const TextStyle(
-                            color: Color(0xFF006837),
-                            fontSize: 26,
-                            fontWeight: FontWeight.w900,
+                            color: AppColors.primary,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
                           ),
                         )
                       : null,
                 ),
               ),
               Positioned(
-                bottom: 2,
-                right: 2,
-                child: Container(
-                  padding: const EdgeInsets.all(2),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.check_circle_rounded,
-                    color: Color(0xFF10B981),
-                    size: 22,
+                bottom: 0,
+                right: 0,
+                child: InkWell(
+                  onTap: () => Navigator.pushNamed(context, '/edit_profile'),
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    padding: const EdgeInsets.all(5),
+                    decoration: BoxDecoration(
+                      color: AppColors.slateDark,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                    child: const Icon(
+                      Icons.camera_alt_rounded,
+                      color: Colors.white,
+                      size: 13,
+                    ),
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 14),
 
-          // Customer Name
+          const SizedBox(height: 10),
+
+          // User Name
           Text(
             userName,
             textAlign: TextAlign.center,
             style: const TextStyle(
-              fontSize: 21,
+              fontSize: 17.5,
               fontWeight: FontWeight.w900,
-              color: Color(0xFF0F172A),
-              letterSpacing: -0.4,
+              color: Colors.white,
+              letterSpacing: -0.3,
             ),
           ),
-          const SizedBox(height: 3),
 
-          // Email Address
+          const SizedBox(height: 2),
+
+          // User Email
           Text(
             userEmail,
             textAlign: TextAlign.center,
             style: const TextStyle(
-              fontSize: 13.5,
-              color: Color(0xFF334155),
-              fontWeight: FontWeight.w600,
+              fontSize: 12,
+              color: Colors.white70,
+              fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 12),
 
-          // Verified Customer Chip Badge
+          const SizedBox(height: 10),
+
+          // VIP Gold Member Badge Pill
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.90),
-              borderRadius: BorderRadius.circular(100),
-              border: Border.all(color: Colors.white, width: 1.5),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+              color: Colors.white.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
             ),
             child: const Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.star_rounded, color: Color(0xFF10B981), size: 16),
-                SizedBox(width: 6),
+                Icon(Icons.workspace_premium_rounded, color: Color(0xFFFDE68A), size: 13),
+                SizedBox(width: 4),
                 Text(
-                  "Verified Customer",
+                  "VIP GOLD MEMBER",
                   style: TextStyle(
-                    color: Color(0xFF0F172A),
-                    fontSize: 12,
+                    color: Colors.white,
+                    fontSize: 10.5,
                     fontWeight: FontWeight.w800,
+                    letterSpacing: 0.4,
                   ),
                 ),
               ],
@@ -502,85 +345,102 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
     );
   }
 
-  // ================= 2. QUICK STATS BAR =================
-  Widget _quickStatsBar() {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.025),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _quickStatItem(
-            icon: Icons.local_mall_outlined,
-            label: "Orders",
+  // ================= 2. 3 QUICK STAT METRIC CARDS =================
+  Widget _buildQuickStatCards() {
+    return Row(
+      children: [
+        Expanded(
+          child: _statPillCard(
+            icon: Icons.shopping_bag_outlined,
+            iconColor: const Color(0xFF10B981),
+            iconBg: const Color(0xFFECFDF5),
             value: "$ordersCount",
+            label: "Orders",
             onTap: () => Navigator.pushNamed(context, '/my_orders'),
           ),
-          Container(height: 28, width: 1, color: const Color(0xFFE2E8F0)),
-          _quickStatItem(
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _statPillCard(
             icon: Icons.favorite_border_rounded,
-            label: "Wishlist",
+            iconColor: const Color(0xFFF43F5E),
+            iconBg: const Color(0xFFFFF1F2),
             value: "$wishlistCount",
+            label: "Wishlist",
             onTap: () => Navigator.pushNamed(context, '/wishlist'),
           ),
-          Container(height: 28, width: 1, color: const Color(0xFFE2E8F0)),
-          _quickStatItem(
-            icon: Icons.workspace_premium_outlined,
-            label: "Member",
-            value: "VIP Gold",
-            onTap: () {},
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _statPillCard(
+            icon: Icons.confirmation_number_outlined,
+            iconColor: const Color(0xFF3B82F6),
+            iconBg: const Color(0xFFEFF6FF),
+            value: "5",
+            label: "Coupons",
+            onTap: () => Navigator.pushNamed(context, '/my_orders'),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  Widget _quickStatItem({
+  Widget _statPillCard({
     required IconData icon,
-    required String label,
+    required Color iconColor,
+    required Color iconBg,
     required String value,
+    required String label,
     required VoidCallback onTap,
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
         child: Column(
           children: [
             Row(
-              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(icon, size: 16, color: AppColors.primary),
+                Container(
+                  padding: const EdgeInsets.all(5),
+                  decoration: BoxDecoration(
+                    color: iconBg,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, color: iconColor, size: 14),
+                ),
                 const SizedBox(width: 6),
                 Text(
                   value,
                   style: const TextStyle(
-                    color: AppColors.slateDark,
-                    fontWeight: FontWeight.w900,
                     fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.slateDark,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 2),
+            const SizedBox(height: 3),
             Text(
               label,
               style: const TextStyle(
-                color: AppColors.slateMuted,
-                fontSize: 11.5,
+                fontSize: 11,
                 fontWeight: FontWeight.w600,
+                color: AppColors.slateMuted,
               ),
             ),
           ],
@@ -589,90 +449,176 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
     );
   }
 
-  // ================= SECTION HEADER =================
-  Widget _sectionHeader(String title) {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Text(
-        title,
-        style: const TextStyle(
-          color: Color(0xFF64748B),
-          fontSize: 11.5,
-          fontWeight: FontWeight.w800,
-          letterSpacing: 0.8,
+  // ================= 3. NAVIGATION MENU LIST =================
+  // ================= 3. NAVIGATION MENU LIST (SEPARATE PILL CARDS) =================
+  Widget _buildMenuSection() {
+    return Column(
+      children: [
+        _menuTile(
+          icon: Icons.shopping_bag_outlined,
+          title: "My Orders & Order History",
+          badge: ordersCount > 0 ? "$ordersCount" : null,
+          onTap: () => Navigator.pushNamed(context, '/my_orders'),
+        ),
+        const SizedBox(height: 8),
+        _menuTile(
+          icon: Icons.location_on_outlined,
+          title: "Shipping Addresses",
+          onTap: () => Navigator.pushNamed(context, '/shipping_addresses'),
+        ),
+        const SizedBox(height: 8),
+        _menuTile(
+          icon: Icons.credit_card_outlined,
+          title: "Payment Methods & Cards",
+          onTap: () => Navigator.pushNamed(context, '/shipping_addresses'),
+        ),
+        const SizedBox(height: 8),
+        _menuTile(
+          icon: Icons.favorite_border_rounded,
+          title: "My Wishlist & Favorites",
+          badge: wishlistCount > 0 ? "$wishlistCount" : null,
+          onTap: () => Navigator.pushNamed(context, '/wishlist'),
+        ),
+        const SizedBox(height: 8),
+        _menuTile(
+          icon: Icons.forum_outlined,
+          title: "Chat with Sellers",
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const InboxScreen(isCustomer: true)),
+            );
+          },
+        ),
+        const SizedBox(height: 8),
+        _menuTile(
+          icon: Icons.notifications_none_rounded,
+          title: "Notifications & Alerts",
+          onTap: () => Navigator.pushNamed(context, '/notifications'),
+        ),
+        const SizedBox(height: 8),
+        _menuTile(
+          icon: Icons.lock_outline_rounded,
+          title: "Privacy & Security",
+          onTap: () => Navigator.pushNamed(context, '/change_password'),
+        ),
+        const SizedBox(height: 8),
+        _menuTile(
+          icon: Icons.headset_mic_outlined,
+          title: "Help & Customer Support",
+          onTap: () => Navigator.pushNamed(context, '/help_support'),
+        ),
+      ],
+    );
+  }
+
+  Widget _menuTile({
+    required IconData icon,
+    required String title,
+    String? badge,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            child: Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Icon(icon, size: 16, color: AppColors.slateDark),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.slateDark,
+                    ),
+                  ),
+                ),
+                if (badge != null) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      badge,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                ],
+                const Icon(
+                  Icons.chevron_right_rounded,
+                  size: 18,
+                  color: Color(0xFF94A3B8),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
 
-  // ================= ROW ITEM =================
-  Widget _profileRowItem({
-    required IconData icon,
-    required Color iconBg,
-    required Color iconColor,
-    Color arrowColor = const Color(0xFFCBD5E1),
-    required String title,
-    String? subtitle,
-    String? badgeText,
-    required VoidCallback onTap,
-  }) {
-    return Material(
-      color: Colors.transparent,
-      child: ListTile(
-        onTap: onTap,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        leading: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: iconBg,
-            borderRadius: BorderRadius.circular(13),
+  // ================= 4. COMPACT LOGOUT PILL BUTTON =================
+  Widget _buildLogoutButton() {
+    return SizedBox(
+      height: 40,
+      child: ElevatedButton(
+        onPressed: logout,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.slateDark,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22),
           ),
-          child: Icon(icon, color: iconColor, size: 20),
+          padding: const EdgeInsets.symmetric(horizontal: 24),
         ),
-        title: Text(
-          title,
-          style: const TextStyle(
-            color: Color(0xFF0F172A),
-            fontSize: 14.5,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        subtitle: subtitle != null
-            ? Text(
-                subtitle,
-                style: const TextStyle(
-                  color: AppColors.slateMuted,
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w500,
-                ),
-              )
-            : null,
-        trailing: Row(
+        child: const Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (badgeText != null) ...[
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: AppColors.primary,
-                  borderRadius: BorderRadius.circular(100),
-                ),
-                child: Text(
-                  badgeText,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
+            Icon(Icons.logout_rounded, size: 16, color: Colors.white),
+            SizedBox(width: 6),
+            Text(
+              "Logout",
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
               ),
-              const SizedBox(width: 8),
-            ],
-            Icon(
-              Icons.chevron_right_rounded,
-              color: arrowColor,
-              size: 22,
             ),
           ],
         ),
@@ -683,16 +629,16 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
   // ================= FULL WIDTH BOTTOM NAV BAR =================
   Widget _buildFullWidthBottomNav(int activeIndex) {
     return Container(
-      height: 64,
+      height: 48,
       width: double.infinity,
       decoration: BoxDecoration(
         color: Colors.white,
         border: const Border(top: BorderSide(color: Color(0xFFE2E8F0), width: 1)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 16,
-            offset: const Offset(0, -4),
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
           ),
         ],
       ),
@@ -729,25 +675,25 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary.withValues(alpha: 0.12) : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
+          color: isSelected ? AppColors.primary.withValues(alpha: 0.10) : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
           children: [
             Icon(
               icon,
-              size: 22,
+              size: 20,
               color: isSelected ? AppColors.primary : AppColors.slateMuted,
             ),
             if (isSelected) ...[
-              const SizedBox(width: 6),
+              const SizedBox(width: 4),
               Text(
                 label,
                 style: const TextStyle(
                   color: AppColors.primary,
-                  fontSize: 12.5,
+                  fontSize: 11.5,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -755,22 +701,6 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
           ],
         ),
       ),
-    );
-  }
-}
-
-// ================= DIVIDER LINE =================
-class _DividerLine extends StatelessWidget {
-  const _DividerLine();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Divider(
-      height: 1,
-      thickness: 1,
-      indent: 68,
-      endIndent: 16,
-      color: Color(0xFFF1F5F9),
     );
   }
 }

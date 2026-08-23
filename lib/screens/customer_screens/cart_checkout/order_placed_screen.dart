@@ -90,80 +90,80 @@ class _OrderPlacedScreenState extends State<OrderPlacedScreen> {
           style: TextStyle(
             color: AppColors.slateDark,
             fontWeight: FontWeight.w800,
-            fontSize: 18,
+            fontSize: 16.5,
           ),
         ),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
-          padding: const EdgeInsets.fromLTRB(18, 20, 18, 24),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 580),
+              constraints: const BoxConstraints(maxWidth: 480),
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  // ================= SUCCESS ICON =================
+                  // ================= COMPACT SUCCESS ICON =================
                   Container(
-                    width: 90,
-                    height: 90,
+                    width: 52,
+                    height: 52,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: AppColors.primary.withValues(alpha: 0.12),
-                      border: Border.all(color: AppColors.primary.withValues(alpha: 0.30), width: 2),
+                      border: Border.all(color: AppColors.primary.withValues(alpha: 0.28), width: 1.5),
                     ),
                     child: Center(
                       child: Container(
-                        width: 70,
-                        height: 70,
-                        decoration: BoxDecoration(
+                        width: 40,
+                        height: 40,
+                        decoration: const BoxDecoration(
                           shape: BoxShape.circle,
                           color: AppColors.primary,
                         ),
-                        child: Icon(Icons.check_rounded, color: Colors.white, size: 40),
+                        child: const Icon(Icons.check_rounded, color: Colors.white, size: 22),
                       ),
                     ),
-                  ).animate().scale(duration: 400.ms, curve: Curves.easeOutBack),
+                  ).animate().scale(duration: 350.ms, curve: Curves.easeOutBack),
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 8),
 
                   const Text(
                     "Order Placed Successfully!",
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 24,
+                      fontSize: 17.5,
                       fontWeight: FontWeight.w900,
                       color: AppColors.slateDark,
-                      letterSpacing: -0.5,
+                      letterSpacing: -0.3,
                     ),
-                  ).animate().fadeIn(duration: 350.ms),
+                  ).animate().fadeIn(duration: 300.ms),
 
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 3),
 
                   const Text(
-                    "Thank you for shopping with StyLuxe. Your e-receipt has been generated below.",
+                    "Thank you for shopping with StyLuxe. Your e-receipt is below.",
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 13.5,
+                      fontSize: 11.5,
                       color: AppColors.slateMuted,
-                      height: 1.4,
                     ),
                   ),
 
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 12),
 
-                  // ================= E-RECEIPT SLIP CARD =================
+                  // ================= PROFESSIONAL E-RECEIPT SLIP =================
                   Container(
                     width: double.infinity,
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(24),
+                      borderRadius: BorderRadius.circular(18),
                       border: Border.all(color: const Color(0xFFE2E8F0)),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.04),
-                          blurRadius: 18,
-                          offset: const Offset(0, 8),
+                          color: Colors.black.withValues(alpha: 0.03),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
                         ),
                       ],
                     ),
@@ -174,7 +174,7 @@ class _OrderPlacedScreenState extends State<OrderPlacedScreen> {
                         // Receipt Header Banner
                         Container(
                           width: double.infinity,
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
                           color: const Color(0xFF0F172A),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -182,36 +182,36 @@ class _OrderPlacedScreenState extends State<OrderPlacedScreen> {
                               Row(
                                 children: [
                                   Container(
-                                    padding: const EdgeInsets.all(6),
+                                    padding: const EdgeInsets.all(4),
                                     decoration: BoxDecoration(
                                       color: AppColors.primary,
-                                      borderRadius: BorderRadius.circular(8),
+                                      borderRadius: BorderRadius.circular(6),
                                     ),
-                                    child: const Icon(Icons.receipt_rounded, color: Colors.white, size: 18),
+                                    child: const Icon(Icons.receipt_rounded, color: Colors.white, size: 13),
                                   ),
-                                  const SizedBox(width: 10),
+                                  const SizedBox(width: 8),
                                   const Text(
                                     "OFFICIAL E-RECEIPT",
                                     style: TextStyle(
                                       color: Colors.white,
-                                      fontSize: 12.5,
+                                      fontSize: 11,
                                       fontWeight: FontWeight.w800,
-                                      letterSpacing: 0.5,
+                                      letterSpacing: 0.4,
                                     ),
                                   ),
                                 ],
                               ),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
                                 decoration: BoxDecoration(
-                                  color: AppColors.primary.withValues(alpha: 0.20),
-                                  borderRadius: BorderRadius.circular(20),
+                                  color: AppColors.primary.withValues(alpha: 0.22),
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Text(
                                   status.toUpperCase(),
                                   style: const TextStyle(
                                     color: AppColors.primary,
-                                    fontSize: 10.5,
+                                    fontSize: 9.5,
                                     fontWeight: FontWeight.w800,
                                   ),
                                 ),
@@ -221,11 +221,11 @@ class _OrderPlacedScreenState extends State<OrderPlacedScreen> {
                         ),
 
                         Padding(
-                          padding: const EdgeInsets.all(20),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Order ID & Date
+                              // Order ID & Payment Method Row
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
@@ -236,16 +236,16 @@ class _OrderPlacedScreenState extends State<OrderPlacedScreen> {
                                         "ORDER NUMBER",
                                         style: TextStyle(
                                           color: AppColors.slateMuted,
-                                          fontSize: 10.5,
+                                          fontSize: 9.5,
                                           fontWeight: FontWeight.w600,
                                         ),
                                       ),
-                                      const SizedBox(height: 2),
+                                      const SizedBox(height: 1),
                                       Text(
                                         orderCode,
                                         style: const TextStyle(
                                           color: AppColors.slateDark,
-                                          fontSize: 15,
+                                          fontSize: 13,
                                           fontWeight: FontWeight.w800,
                                         ),
                                       ),
@@ -258,16 +258,16 @@ class _OrderPlacedScreenState extends State<OrderPlacedScreen> {
                                         "PAYMENT METHOD",
                                         style: TextStyle(
                                           color: AppColors.slateMuted,
-                                          fontSize: 10.5,
+                                          fontSize: 9.5,
                                           fontWeight: FontWeight.w600,
                                         ),
                                       ),
-                                      const SizedBox(height: 2),
+                                      const SizedBox(height: 1),
                                       Text(
                                         paymentMethod,
                                         style: const TextStyle(
                                           color: AppColors.slateDark,
-                                          fontSize: 13.5,
+                                          fontSize: 12,
                                           fontWeight: FontWeight.w700,
                                         ),
                                       ),
@@ -278,51 +278,55 @@ class _OrderPlacedScreenState extends State<OrderPlacedScreen> {
 
                               const _DashedLine(),
 
-                              // Customer & Delivery Address Details
-                              const Text(
-                                "DELIVERY DETAILS",
-                                style: TextStyle(
-                                  color: AppColors.slateMuted,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 0.5,
-                                ),
+                              // Delivery Details
+                              Row(
+                                children: [
+                                  const Icon(Icons.person_outline_rounded, size: 14, color: AppColors.primary),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    customerName,
+                                    style: const TextStyle(
+                                      color: AppColors.slateDark,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const Spacer(),
+                                  const Icon(Icons.phone_outlined, size: 13, color: AppColors.slateMuted),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    phone,
+                                    style: const TextStyle(
+                                      color: AppColors.slateDark,
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(height: 12),
-
-                              _receiptDetailRow(
-                                icon: Icons.person_outline_rounded,
-                                label: "Customer Name",
-                                value: customerName,
-                              ),
-                              const SizedBox(height: 10),
-
-                              _receiptDetailRow(
-                                icon: Icons.phone_outlined,
-                                label: "Phone Number",
-                                value: phone,
-                              ),
-                              const SizedBox(height: 10),
-
-                              _receiptDetailRow(
-                                icon: Icons.location_on_outlined,
-                                label: "Delivery Address",
-                                value: "$address, $city",
+                              const SizedBox(height: 5),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Icon(Icons.location_on_outlined, size: 14, color: AppColors.primary),
+                                  const SizedBox(width: 5),
+                                  Expanded(
+                                    child: Text(
+                                      "$address, $city",
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: AppColors.slateDark,
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
 
                               if (orderItems.isNotEmpty) ...[
                                 const _DashedLine(),
-
-                                const Text(
-                                  "ORDERED ITEMS",
-                                  style: TextStyle(
-                                    color: AppColors.slateMuted,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                                const SizedBox(height: 12),
 
                                 ...orderItems.map((item) {
                                   final product = item['products'] ?? {};
@@ -331,7 +335,7 @@ class _OrderPlacedScreenState extends State<OrderPlacedScreen> {
                                   final price = (item['price'] as num?)?.toDouble() ?? 0.0;
 
                                   return Padding(
-                                    padding: const EdgeInsets.only(bottom: 8),
+                                    padding: const EdgeInsets.only(bottom: 4),
                                     child: Row(
                                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                       children: [
@@ -342,7 +346,7 @@ class _OrderPlacedScreenState extends State<OrderPlacedScreen> {
                                             overflow: TextOverflow.ellipsis,
                                             style: const TextStyle(
                                               color: AppColors.slateDark,
-                                              fontSize: 13.5,
+                                              fontSize: 12,
                                               fontWeight: FontWeight.w600,
                                             ),
                                           ),
@@ -351,7 +355,7 @@ class _OrderPlacedScreenState extends State<OrderPlacedScreen> {
                                           "Rs. ${(price * qty).toStringAsFixed(0)}",
                                           style: const TextStyle(
                                             color: AppColors.slateDark,
-                                            fontSize: 13.5,
+                                            fontSize: 12,
                                             fontWeight: FontWeight.w700,
                                           ),
                                         ),
@@ -363,7 +367,7 @@ class _OrderPlacedScreenState extends State<OrderPlacedScreen> {
 
                               const _DashedLine(),
 
-                              // Grand Total
+                              // Grand Total Row
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
@@ -371,7 +375,7 @@ class _OrderPlacedScreenState extends State<OrderPlacedScreen> {
                                     "Total Paid",
                                     style: TextStyle(
                                       color: AppColors.slateDark,
-                                      fontSize: 16,
+                                      fontSize: 13.5,
                                       fontWeight: FontWeight.w800,
                                     ),
                                   ),
@@ -379,7 +383,7 @@ class _OrderPlacedScreenState extends State<OrderPlacedScreen> {
                                     "Rs. ${finalAmount.toStringAsFixed(0)}",
                                     style: const TextStyle(
                                       color: AppColors.primary,
-                                      fontSize: 22,
+                                      fontSize: 17,
                                       fontWeight: FontWeight.w900,
                                     ),
                                   ),
@@ -390,69 +394,74 @@ class _OrderPlacedScreenState extends State<OrderPlacedScreen> {
                         ),
                       ],
                     ),
-                  ).animate().fadeIn(delay: 200.ms, duration: 400.ms),
+                  ).animate().fadeIn(delay: 150.ms, duration: 350.ms),
 
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 16),
 
                   // ================= ACTION BUTTONS =================
-                  SizedBox(
-                    width: double.infinity,
-                    height: 50,
-                    child: ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.pushNamedAndRemoveUntil(
-                          context,
-                          OrderPlacedScreen.homeRoute,
-                          (route) => false,
-                        );
-                      },
-                      icon: const Icon(Icons.shopping_bag_outlined, color: Colors.white, size: 18),
-                      label: const Text(
-                        "CONTINUE SHOPPING",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 14.5,
-                          fontWeight: FontWeight.w800,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: SizedBox(
+                          height: 42,
+                          child: OutlinedButton(
+                            onPressed: () {
+                              Navigator.pushNamedAndRemoveUntil(
+                                context,
+                                OrderPlacedScreen.ordersRoute,
+                                (route) => false,
+                              );
+                            },
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: Color(0xFFCBD5E1)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              padding: const EdgeInsets.symmetric(horizontal: 10),
+                            ),
+                            child: const Text(
+                              "View Orders",
+                              style: TextStyle(
+                                color: AppColors.slateDark,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
-                      style: ElevatedButton.styleFrom(
-                        elevation: 0,
-                        backgroundColor: AppColors.primary,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: SizedBox(
+                          height: 42,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              Navigator.pushNamedAndRemoveUntil(
+                                context,
+                                OrderPlacedScreen.homeRoute,
+                                (route) => false,
+                              );
+                            },
+                            style: ElevatedButton.styleFrom(
+                              elevation: 0,
+                              backgroundColor: AppColors.primary,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              padding: const EdgeInsets.symmetric(horizontal: 10),
+                            ),
+                            child: const Text(
+                              "Continue Shopping",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-
-                  SizedBox(
-                    width: double.infinity,
-                    height: 48,
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        Navigator.pushNamedAndRemoveUntil(
-                          context,
-                          OrderPlacedScreen.ordersRoute,
-                          (route) => false,
-                        );
-                      },
-                      icon: const Icon(Icons.receipt_long_outlined, color: AppColors.slateDark, size: 18),
-                      label: const Text(
-                        "View My Orders",
-                        style: TextStyle(
-                          color: AppColors.slateDark,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Color(0xFFE2E8F0)),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                      ),
-                    ),
+                    ],
                   ),
                 ],
               ),
@@ -467,7 +476,7 @@ class _OrderPlacedScreenState extends State<OrderPlacedScreen> {
   // ================= FULL WIDTH BOTTOM NAV BAR =================
   Widget _buildFullWidthBottomNav(int activeIndex) {
     return Container(
-      height: 64,
+      height: 50,
       width: double.infinity,
       decoration: BoxDecoration(
         color: Colors.white,
@@ -475,8 +484,8 @@ class _OrderPlacedScreenState extends State<OrderPlacedScreen> {
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 16,
-            offset: const Offset(0, -4),
+            blurRadius: 10,
+            offset: const Offset(0, -2),
           ),
         ],
       ),
@@ -513,10 +522,10 @@ class _OrderPlacedScreenState extends State<OrderPlacedScreen> {
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
           color: isSelected ? AppColors.primary.withValues(alpha: 0.12) : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(10),
         ),
         child: Row(
           children: [
@@ -526,12 +535,12 @@ class _OrderPlacedScreenState extends State<OrderPlacedScreen> {
               color: isSelected ? AppColors.primary : AppColors.slateMuted,
             ),
             if (isSelected) ...[
-              const SizedBox(width: 6),
+              const SizedBox(width: 5),
               Text(
                 label,
                 style: const TextStyle(
                   color: AppColors.primary,
-                  fontSize: 12.5,
+                  fontSize: 12,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -539,44 +548,6 @@ class _OrderPlacedScreenState extends State<OrderPlacedScreen> {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _receiptDetailRow({
-    required IconData icon,
-    required String label,
-    required String value,
-  }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 18, color: AppColors.primary),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: const TextStyle(
-                  color: AppColors.slateMuted,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                value,
-                style: const TextStyle(
-                  color: AppColors.slateDark,
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
     );
   }
 }
@@ -588,13 +559,13 @@ class _DashedLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: List.generate(
-          30,
+          28,
           (index) => Expanded(
             child: Container(
-              height: 1.2,
+              height: 1.1,
               color: index % 2 == 0 ? const Color(0xFFCBD5E1) : Colors.transparent,
             ),
           ),

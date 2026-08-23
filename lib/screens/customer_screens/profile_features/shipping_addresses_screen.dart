@@ -231,9 +231,10 @@ class _ShippingAddressesScreenState extends State<ShippingAddressesScreen> {
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
         elevation: 0,
+        toolbarHeight: 46.0,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.slateDark, size: 18),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.slateDark, size: 17),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
@@ -241,7 +242,7 @@ class _ShippingAddressesScreenState extends State<ShippingAddressesScreen> {
           style: TextStyle(
             color: AppColors.slateDark,
             fontWeight: FontWeight.w800,
-            fontSize: 18,
+            fontSize: 16.5,
           ),
         ),
         actions: [
@@ -250,11 +251,11 @@ class _ShippingAddressesScreenState extends State<ShippingAddressesScreen> {
             icon: const Icon(
               Icons.add_location_alt_outlined,
               color: AppColors.slateDark,
-              size: 22,
+              size: 20,
             ),
             onPressed: () => openAddAddress(),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
         ],
       ),
 
@@ -351,26 +352,26 @@ class _ShippingAddressesScreenState extends State<ShippingAddressesScreen> {
   Widget _summaryCard() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: AppColors.primary,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.25),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
+            color: AppColors.primary.withValues(alpha: 0.22),
+            blurRadius: 14,
+            offset: const Offset(0, 5),
           ),
         ],
       ),
       child: Row(
         children: [
           Container(
-            height: 52,
-            width: 52,
+            height: 42,
+            width: 42,
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.18),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: Colors.white.withValues(alpha: 0.30),
               ),
@@ -378,11 +379,11 @@ class _ShippingAddressesScreenState extends State<ShippingAddressesScreen> {
             child: const Icon(
               Icons.location_on_outlined,
               color: Colors.white,
-              size: 28,
+              size: 22,
             ),
           ),
 
-          const SizedBox(width: 14),
+          const SizedBox(width: 12),
 
           Expanded(
             child: Column(
@@ -394,20 +395,20 @@ class _ShippingAddressesScreenState extends State<ShippingAddressesScreen> {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -0.3,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.2,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 Text(
                   "${addresses.length} saved address${addresses.length == 1 ? '' : 'es'} • ${_defaultCount()} default",
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.88),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
+                    color: Colors.white.withValues(alpha: 0.90),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
@@ -426,20 +427,20 @@ class _ShippingAddressesScreenState extends State<ShippingAddressesScreen> {
           width: double.infinity,
           constraints: const BoxConstraints(maxWidth: 420),
           padding: const EdgeInsets.symmetric(
-            horizontal: 24,
-            vertical: 40,
+            horizontal: 20,
+            vertical: 32,
           ),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(20),
             border: Border.all(
               color: const Color(0xFFE2E8F0),
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 18,
-                offset: const Offset(0, 10),
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: 14,
+                offset: const Offset(0, 6),
               ),
             ],
           ),
@@ -447,76 +448,63 @@ class _ShippingAddressesScreenState extends State<ShippingAddressesScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                height: 80,
-                width: 80,
+                height: 64,
+                width: 64,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.12),
+                  color: AppColors.primary.withValues(alpha: 0.10),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
-                  Icons.location_on_outlined,
-                  size: 40,
+                  Icons.location_off_outlined,
                   color: AppColors.primary,
+                  size: 30,
                 ),
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 14),
               const Text(
-                "No Addresses Saved",
-                textAlign: TextAlign.center,
+                "No Saved Addresses",
                 style: TextStyle(
                   color: AppColors.slateDark,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: -0.4,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               const Text(
-                "Add your delivery address to make checkout faster.",
+                "Add your delivery destinations to enjoy smooth and fast checkouts.",
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: AppColors.slateMuted,
-                  fontSize: 13.5,
-                  height: 1.45,
+                  fontSize: 12.5,
                 ),
               ),
-              const SizedBox(height: 22),
+              const SizedBox(height: 20),
               SizedBox(
-                width: double.infinity,
-                height: 46,
+                height: 40,
                 child: ElevatedButton.icon(
                   onPressed: () => openAddAddress(),
-                  icon: const Icon(
-                    Icons.add_location_alt_outlined,
-                    color: Colors.white,
-                    size: 18,
-                  ),
+                  icon: const Icon(Icons.add_location_alt_outlined, size: 16, color: Colors.white),
                   label: const Text(
-                    "Add New Address",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 14,
-                    ),
+                    "Add Address",
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13),
                   ),
                   style: ElevatedButton.styleFrom(
-                    elevation: 0,
                     backgroundColor: AppColors.primary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(horizontal: 18),
                   ),
                 ),
               ),
             ],
           ),
-        ).animate().fadeIn(duration: 350.ms).scale(),
+        ),
       ),
     );
   }
 }
 
-// ================= ADDRESS CARD =================
+// ================= ADDRESS CARD WIDGET =================
 class AddressCard extends StatelessWidget {
   final Map<String, dynamic> address;
   final VoidCallback onEdit;
@@ -549,26 +537,26 @@ class AddressCard extends StatelessWidget {
     final city = address['city']?.toString() ?? '';
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 14),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(
           color: isDefault
               ? AppColors.primary
               : const Color(0xFFE2E8F0),
-          width: isDefault ? 1.6 : 1,
+          width: isDefault ? 1.4 : 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
+            color: Colors.black.withValues(alpha: 0.025),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -576,13 +564,13 @@ class AddressCard extends StatelessWidget {
             Row(
               children: [
                 Container(
-                  height: 44,
-                  width: 44,
+                  height: 36,
+                  width: 36,
                   decoration: BoxDecoration(
                     color: isDefault
                         ? AppColors.primary.withValues(alpha: 0.12)
                         : const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
                     isDefault
@@ -591,11 +579,11 @@ class AddressCard extends StatelessWidget {
                     color: isDefault
                         ? AppColors.primary
                         : AppColors.slateDark,
-                    size: 22,
+                    size: 18,
                   ),
                 ),
 
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
 
                 Expanded(
                   child: Column(
@@ -607,19 +595,19 @@ class AddressCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           color: AppColors.slateDark,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
                           letterSpacing: -0.2,
                         ),
                       ),
-                      const SizedBox(height: 3),
+                      const SizedBox(height: 1),
                       Text(
                         phone.isEmpty ? "No phone number" : phone,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
                           color: AppColors.slateMuted,
-                          fontSize: 12,
+                          fontSize: 11.5,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -630,26 +618,26 @@ class AddressCard extends StatelessWidget {
                 if (isDefault)
                   Container(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
+                      horizontal: 8,
+                      vertical: 3,
                     ),
                     decoration: BoxDecoration(
                       color: AppColors.primary.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(100),
                       border: Border.all(
-                        color: AppColors.primary.withValues(alpha: 0.30),
+                        color: AppColors.primary.withValues(alpha: 0.25),
                       ),
                     ),
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.star_rounded, color: AppColors.primary, size: 12),
+                        Icon(Icons.star_rounded, color: AppColors.primary, size: 11),
                         SizedBox(width: 3),
                         Text(
                           "Default",
                           style: TextStyle(
                             color: AppColors.primary,
-                            fontSize: 11,
+                            fontSize: 10,
                             fontWeight: FontWeight.w800,
                           ),
                         ),
@@ -659,14 +647,14 @@ class AddressCard extends StatelessWidget {
               ],
             ),
 
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
 
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               decoration: BoxDecoration(
                 color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: const Color(0xFFE2E8F0),
                 ),
@@ -677,9 +665,9 @@ class AddressCard extends StatelessWidget {
                   const Icon(
                     Icons.home_outlined,
                     color: AppColors.slateMuted,
-                    size: 18,
+                    size: 15,
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                   Expanded(
                     child: Text(
                       [
@@ -688,9 +676,9 @@ class AddressCard extends StatelessWidget {
                       ].where((item) => item.trim().isNotEmpty).join(", "),
                       style: const TextStyle(
                         color: AppColors.slateDark,
-                        fontSize: 13,
+                        fontSize: 12,
                         fontWeight: FontWeight.w500,
-                        height: 1.4,
+                        height: 1.35,
                       ),
                     ),
                   ),
@@ -698,59 +686,59 @@ class AddressCard extends StatelessWidget {
               ),
             ),
 
-            const SizedBox(height: 14),
+            const SizedBox(height: 10),
 
-            // ================= ACTION BUTTONS (NO ICONS, INCREASED SIZE) =================
+            // ================= ACTION BUTTONS (COMPACT 38PX) =================
             Row(
               children: [
                 Expanded(
                   child: SizedBox(
-                    height: 46,
+                    height: 38,
                     child: OutlinedButton(
                       onPressed: onEdit,
                       style: OutlinedButton.styleFrom(
                         side: const BorderSide(
                           color: Color(0xFFCBD5E1),
-                          width: 1.2,
+                          width: 1,
                         ),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(12),
                         ),
+                        padding: EdgeInsets.zero,
                       ),
                       child: const Text(
                         "Edit",
                         style: TextStyle(
                           color: AppColors.slateDark,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 14,
-                          letterSpacing: 0.2,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
                         ),
                       ),
                     ),
                   ),
                 ),
 
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
 
                 Expanded(
                   child: SizedBox(
-                    height: 46,
+                    height: 38,
                     child: ElevatedButton(
                       onPressed: onDelete,
                       style: ElevatedButton.styleFrom(
                         elevation: 0,
                         backgroundColor: AppColors.roseRed,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(12),
                         ),
+                        padding: EdgeInsets.zero,
                       ),
                       child: const Text(
                         "Delete",
                         style: TextStyle(
                           color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 14,
-                          letterSpacing: 0.2,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
                         ),
                       ),
                     ),

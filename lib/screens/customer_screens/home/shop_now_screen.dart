@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../theme/app_theme.dart';
@@ -13,6 +14,7 @@ class ShopNowScreen extends StatefulWidget {
 
 class _ShopNowScreenState extends State<ShopNowScreen> {
   final supabase = Supabase.instance.client;
+  late final ScrollController _scrollController;
 
   final TextEditingController _searchController = TextEditingController();
 
@@ -28,6 +30,7 @@ class _ShopNowScreenState extends State<ShopNowScreen> {
 
   bool isLoading = true;
   bool _routeArgumentsLoaded = false;
+  bool _isNavVisible = true;
 
   final List<String> categories = [
     "All",
@@ -42,7 +45,28 @@ class _ShopNowScreenState extends State<ShopNowScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+    _scrollController.addListener(_scrollListener);
+  }
+
+  void _scrollListener() {
+    if (_scrollController.position.userScrollDirection == ScrollDirection.reverse) {
+      if (_isNavVisible) {
+        setState(() => _isNavVisible = false);
+      }
+    } else if (_scrollController.position.userScrollDirection == ScrollDirection.forward) {
+      if (!_isNavVisible) {
+        setState(() => _isNavVisible = true);
+      }
+    }
+  }
+
+  @override
   void dispose() {
+    _scrollController.removeListener(_scrollListener);
+    _scrollController.dispose();
     _searchController.dispose();
     super.dispose();
   }
@@ -444,22 +468,22 @@ class _ShopNowScreenState extends State<ShopNowScreen> {
           children: [
             // Search Bar & Category Dropdown Row
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+              padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
               child: Row(
                 children: [
                   // 1. Search Bar (Expanded)
                   Expanded(
                     child: Container(
-                      height: 48,
+                      height: 38,
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(20),
                         border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withValues(alpha: 0.03),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
                           ),
                         ],
                       ),
@@ -470,14 +494,21 @@ class _ShopNowScreenState extends State<ShopNowScreen> {
                           searchQuery = value.trim();
                           filterProducts();
                         },
-                        style: const TextStyle(color: AppColors.slateDark, fontSize: 14, fontWeight: FontWeight.w500),
+                        style: const TextStyle(color: AppColors.slateDark, fontSize: 13, fontWeight: FontWeight.w500),
                         decoration: InputDecoration(
-                          hintText: "Search products, brands...",
-                          hintStyle: const TextStyle(color: AppColors.slateMuted, fontSize: 13.5),
-                          prefixIcon: const Icon(Icons.search_rounded, color: AppColors.slateMuted, size: 20),
+                          isDense: true,
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          errorBorder: InputBorder.none,
+                          disabledBorder: InputBorder.none,
+                          prefixIcon: const Icon(Icons.search_rounded, color: AppColors.slateMuted, size: 18),
+                          prefixIconConstraints: const BoxConstraints(minWidth: 34, minHeight: 34),
                           suffixIcon: searchQuery.isNotEmpty
                               ? IconButton(
-                                  icon: const Icon(Icons.close_rounded, size: 18, color: AppColors.slateMuted),
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                                  icon: const Icon(Icons.close_rounded, size: 16, color: AppColors.slateMuted),
                                   onPressed: () {
                                     _searchController.clear();
                                     searchQuery = "";
@@ -485,21 +516,20 @@ class _ShopNowScreenState extends State<ShopNowScreen> {
                                   },
                                 )
                               : null,
-                          border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                          contentPadding: const EdgeInsets.symmetric(vertical: 8),
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 8),
 
                   // 2. Category Dropdown Selector
                   Container(
-                    height: 48,
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    height: 38,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
                     decoration: BoxDecoration(
                       color: selectedCategory == "All" ? Colors.white : AppColors.primary,
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(10),
                       border: Border.all(
                         color: selectedCategory == "All" ? const Color(0xFFE2E8F0) : AppColors.primary,
                         width: 1,
@@ -509,8 +539,8 @@ class _ShopNowScreenState extends State<ShopNowScreen> {
                           color: selectedCategory == "All"
                               ? Colors.black.withValues(alpha: 0.03)
                               : AppColors.primary.withValues(alpha: 0.25),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
                         ),
                       ],
                     ),
@@ -523,11 +553,11 @@ class _ShopNowScreenState extends State<ShopNowScreen> {
                         filterProducts();
                       },
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(14),
                       ),
                       color: Colors.white,
                       elevation: 8,
-                      offset: const Offset(0, 52),
+                      offset: const Offset(0, 44),
                       itemBuilder: (BuildContext context) {
                         return categories.map((String cat) {
                           final isSelected = _normalizeCategory(cat).toLowerCase() == _normalizeCategory(selectedCategory).toLowerCase();
@@ -537,14 +567,14 @@ class _ShopNowScreenState extends State<ShopNowScreen> {
                               children: [
                                 Icon(
                                   isSelected ? Icons.check_circle_rounded : Icons.category_outlined,
-                                  size: 18,
+                                  size: 16,
                                   color: isSelected ? AppColors.primary : AppColors.slateMuted,
                                 ),
-                                const SizedBox(width: 10),
+                                const SizedBox(width: 8),
                                 Text(
                                   cat,
                                   style: TextStyle(
-                                    fontSize: 13.5,
+                                    fontSize: 12.5,
                                     fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                                     color: isSelected ? AppColors.primary : AppColors.slateDark,
                                   ),
@@ -559,14 +589,14 @@ class _ShopNowScreenState extends State<ShopNowScreen> {
                         children: [
                           Icon(
                             Icons.tune_rounded,
-                            size: 16,
+                            size: 14,
                             color: selectedCategory == "All" ? AppColors.slateDark : Colors.white,
                           ),
                           const SizedBox(width: 4),
                           Text(
                             selectedCategory == "All" ? "Category" : selectedCategory,
                             style: TextStyle(
-                              fontSize: 12.5,
+                              fontSize: 11.5,
                               fontWeight: FontWeight.w700,
                               color: selectedCategory == "All" ? AppColors.slateDark : Colors.white,
                             ),
@@ -574,7 +604,7 @@ class _ShopNowScreenState extends State<ShopNowScreen> {
                           const SizedBox(width: 2),
                           Icon(
                             Icons.keyboard_arrow_down_rounded,
-                            size: 16,
+                            size: 14,
                             color: selectedCategory == "All" ? AppColors.slateMuted : Colors.white,
                           ),
                         ],
@@ -585,11 +615,11 @@ class _ShopNowScreenState extends State<ShopNowScreen> {
 
                   // 3. Price Filter Dropdown Selector
                   Container(
-                    height: 48,
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    height: 38,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
                     decoration: BoxDecoration(
                       color: _hasActivePriceFilter() ? AppColors.primary : Colors.white,
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(10),
                       border: Border.all(
                         color: _hasActivePriceFilter() ? AppColors.primary : const Color(0xFFE2E8F0),
                         width: 1,
@@ -599,8 +629,8 @@ class _ShopNowScreenState extends State<ShopNowScreen> {
                           color: _hasActivePriceFilter()
                               ? AppColors.primary.withValues(alpha: 0.25)
                               : Colors.black.withValues(alpha: 0.03),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
                         ),
                       ],
                     ),
@@ -622,11 +652,11 @@ class _ShopNowScreenState extends State<ShopNowScreen> {
                         filterProducts();
                       },
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(14),
                       ),
                       color: Colors.white,
                       elevation: 8,
-                      offset: const Offset(0, 52),
+                      offset: const Offset(0, 44),
                       itemBuilder: (BuildContext context) {
                         return [
                           const PopupMenuItem<String>(
@@ -634,7 +664,7 @@ class _ShopNowScreenState extends State<ShopNowScreen> {
                             child: Text(
                               "SORT BY PRICE",
                               style: TextStyle(
-                                fontSize: 10.5,
+                                fontSize: 10,
                                 fontWeight: FontWeight.w800,
                                 color: AppColors.slateMuted,
                                 letterSpacing: 0.5,
@@ -647,14 +677,14 @@ class _ShopNowScreenState extends State<ShopNowScreen> {
                               children: [
                                 Icon(
                                   selectedPriceSort == "default" ? Icons.check_circle_rounded : Icons.swap_vert_rounded,
-                                  size: 18,
+                                  size: 16,
                                   color: selectedPriceSort == "default" ? AppColors.primary : AppColors.slateMuted,
                                 ),
                                 const SizedBox(width: 8),
                                 Text(
                                   "Default Order",
                                   style: TextStyle(
-                                    fontSize: 13,
+                                    fontSize: 12.5,
                                     fontWeight: selectedPriceSort == "default" ? FontWeight.w700 : FontWeight.w500,
                                     color: selectedPriceSort == "default" ? AppColors.primary : AppColors.slateDark,
                                   ),
@@ -668,14 +698,14 @@ class _ShopNowScreenState extends State<ShopNowScreen> {
                               children: [
                                 Icon(
                                   selectedPriceSort == "low_to_high" ? Icons.check_circle_rounded : Icons.arrow_upward_rounded,
-                                  size: 18,
+                                  size: 16,
                                   color: selectedPriceSort == "low_to_high" ? AppColors.primary : AppColors.slateMuted,
                                 ),
                                 const SizedBox(width: 8),
                                 Text(
                                   "Price: Low to High",
                                   style: TextStyle(
-                                    fontSize: 13,
+                                    fontSize: 12.5,
                                     fontWeight: selectedPriceSort == "low_to_high" ? FontWeight.w700 : FontWeight.w500,
                                     color: selectedPriceSort == "low_to_high" ? AppColors.primary : AppColors.slateDark,
                                   ),
@@ -689,14 +719,14 @@ class _ShopNowScreenState extends State<ShopNowScreen> {
                               children: [
                                 Icon(
                                   selectedPriceSort == "high_to_low" ? Icons.check_circle_rounded : Icons.arrow_downward_rounded,
-                                  size: 18,
+                                  size: 16,
                                   color: selectedPriceSort == "high_to_low" ? AppColors.primary : AppColors.slateMuted,
                                 ),
                                 const SizedBox(width: 8),
                                 Text(
                                   "Price: High to Low",
                                   style: TextStyle(
-                                    fontSize: 13,
+                                    fontSize: 12.5,
                                     fontWeight: selectedPriceSort == "high_to_low" ? FontWeight.w700 : FontWeight.w500,
                                     color: selectedPriceSort == "high_to_low" ? AppColors.primary : AppColors.slateDark,
                                   ),
@@ -708,9 +738,9 @@ class _ShopNowScreenState extends State<ShopNowScreen> {
                           const PopupMenuItem<String>(
                             enabled: false,
                             child: Text(
-                              "PRICE RANGE",
+                              "FILTER BY PRICE RANGE",
                               style: TextStyle(
-                                fontSize: 10.5,
+                                fontSize: 10,
                                 fontWeight: FontWeight.w800,
                                 color: AppColors.slateMuted,
                                 letterSpacing: 0.5,
@@ -729,14 +759,14 @@ class _ShopNowScreenState extends State<ShopNowScreen> {
                         children: [
                           Icon(
                             Icons.sell_outlined,
-                            size: 16,
+                            size: 14,
                             color: _hasActivePriceFilter() ? Colors.white : AppColors.slateDark,
                           ),
                           const SizedBox(width: 4),
                           Text(
                             _getPriceFilterLabel(),
                             style: TextStyle(
-                              fontSize: 12.5,
+                              fontSize: 11.5,
                               fontWeight: FontWeight.w700,
                               color: _hasActivePriceFilter() ? Colors.white : AppColors.slateDark,
                             ),
@@ -744,7 +774,7 @@ class _ShopNowScreenState extends State<ShopNowScreen> {
                           const SizedBox(width: 2),
                           Icon(
                             Icons.keyboard_arrow_down_rounded,
-                            size: 16,
+                            size: 14,
                             color: _hasActivePriceFilter() ? Colors.white : AppColors.slateMuted,
                           ),
                         ],
@@ -767,16 +797,17 @@ class _ShopNowScreenState extends State<ShopNowScreen> {
                           onRefresh: fetchProducts,
                           color: AppColors.primary,
                           child: GridView.builder(
+                            controller: _scrollController,
                             physics: const AlwaysScrollableScrollPhysics(
                               parent: BouncingScrollPhysics(),
                             ),
-                            padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+                            padding: const EdgeInsets.fromLTRB(12, 4, 12, 20),
                             itemCount: filteredProducts.length,
                             gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                              maxCrossAxisExtent: 180,
-                              mainAxisExtent: 240,
-                              crossAxisSpacing: 12,
-                              mainAxisSpacing: 12,
+                              maxCrossAxisExtent: 130,
+                              mainAxisExtent: 172,
+                              crossAxisSpacing: 8,
+                              mainAxisSpacing: 8,
                             ),
                             itemBuilder: (context, index) {
                               final product = filteredProducts[index];
@@ -796,14 +827,23 @@ class _ShopNowScreenState extends State<ShopNowScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: _buildFullWidthBottomNav(1),
+      bottomNavigationBar: AnimatedSlide(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeInOut,
+        offset: _isNavVisible ? Offset.zero : const Offset(0, 1.5),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 250),
+          height: _isNavVisible ? 50 : 0,
+          child: _buildFullWidthBottomNav(1),
+        ),
+      ),
     );
   }
 
   // ================= FULL WIDTH BOTTOM NAV BAR =================
   Widget _buildFullWidthBottomNav(int activeIndex) {
     return Container(
-      height: 64,
+      height: 50,
       width: double.infinity,
       decoration: BoxDecoration(
         color: Colors.white,
@@ -813,8 +853,8 @@ class _ShopNowScreenState extends State<ShopNowScreen> {
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 16,
-            offset: const Offset(0, -4),
+            blurRadius: 10,
+            offset: const Offset(0, -2),
           ),
         ],
       ),
@@ -851,10 +891,10 @@ class _ShopNowScreenState extends State<ShopNowScreen> {
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
           color: isSelected ? AppColors.primary.withValues(alpha: 0.12) : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(10),
         ),
         child: Row(
           children: [
@@ -864,12 +904,12 @@ class _ShopNowScreenState extends State<ShopNowScreen> {
               color: isSelected ? AppColors.primary : AppColors.slateMuted,
             ),
             if (isSelected) ...[
-              const SizedBox(width: 6),
+              const SizedBox(width: 5),
               Text(
                 label,
                 style: const TextStyle(
                   color: AppColors.primary,
-                  fontSize: 12.5,
+                  fontSize: 12,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -995,13 +1035,13 @@ class ProductCardItem extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
             ),
           ],
         ),
@@ -1009,91 +1049,88 @@ class ProductCardItem extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Dedicated Full Fit AspectRatio Image Box (1.20)
+            // Dedicated Full Fit AspectRatio Image Box
             AspectRatio(
-              aspectRatio: 1.20,
+              aspectRatio: 1.05,
               child: Container(
                 decoration: const BoxDecoration(
-                  color: Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(14)),
+                  color: Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(13)),
                 ),
                 child: Stack(
                   children: [
                     Positioned.fill(
                       child: ClipRRect(
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
-                        child: Padding(
-                          padding: const EdgeInsets.all(3),
-                          child: imageUrl.isNotEmpty
-                              ? Image.network(
-                                  imageUrl,
-                                  width: double.infinity,
-                                  height: double.infinity,
-                                  fit: BoxFit.contain,
-                                  alignment: Alignment.center,
-                                  errorBuilder: (_, _, _) => _placeholder(),
-                                )
-                              : _placeholder(),
-                        ),
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(13)),
+                        child: imageUrl.isNotEmpty
+                            ? Image.network(
+                                imageUrl,
+                                width: double.infinity,
+                                height: double.infinity,
+                                fit: BoxFit.cover,
+                                alignment: Alignment.center,
+                                errorBuilder: (_, _, _) => _placeholder(),
+                              )
+                            : _placeholder(),
                       ),
                     ),
 
-                  // Category Badge with Dark Glass Backdrop
-                  Positioned(
-                    top: 6,
-                    left: 6,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.50),
-                        borderRadius: BorderRadius.circular(5),
-                      ),
-                      child: Text(
-                        category,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 9,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  // Wishlist Heart Button
-                  Positioned(
-                    top: 5,
-                    right: 5,
-                    child: GestureDetector(
-                      onTap: () => onWishlistToggle(product),
+                    // Category Badge with Dark Glass Backdrop
+                    Positioned(
+                      top: 4,
+                      left: 4,
                       child: Container(
-                        height: 26,
-                        width: 26,
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1.5),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.92),
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.12),
-                              blurRadius: 5,
-                            ),
-                          ],
+                          color: Colors.black.withValues(alpha: 0.55),
+                          borderRadius: BorderRadius.circular(4),
                         ),
-                        child: Icon(
-                          isWishlisted ? Icons.favorite : Icons.favorite_border,
-                          size: 14,
-                          color: isWishlisted ? AppColors.roseRed : AppColors.slateDark,
+                        child: Text(
+                          category,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 7.5,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
+
+                    // Wishlist Heart Button
+                    Positioned(
+                      top: 4,
+                      right: 4,
+                      child: GestureDetector(
+                        onTap: () => onWishlistToggle(product),
+                        child: Container(
+                          height: 22,
+                          width: 22,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.10),
+                                blurRadius: 4,
+                              ),
+                            ],
+                          ),
+                          child: Icon(
+                            isWishlisted ? Icons.favorite : Icons.favorite_border,
+                            size: 12,
+                            color: isWishlisted ? AppColors.roseRed : AppColors.slateDark,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
 
             // Product Details Section
             Padding(
-              padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
+              padding: const EdgeInsets.fromLTRB(6, 4, 6, 4),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -1102,22 +1139,22 @@ class ProductCardItem extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 13.5,
+                      fontSize: 11,
                       fontWeight: FontWeight.w700,
                       color: AppColors.slateDark,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 1),
 
                   // Rating row
                   const Row(
                     children: [
-                      Icon(Icons.star_rounded, size: 14, color: Colors.amber),
-                      SizedBox(width: 3),
+                      Icon(Icons.star_rounded, size: 11, color: Colors.amber),
+                      SizedBox(width: 2),
                       Text(
                         "4.8",
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 9.5,
                           fontWeight: FontWeight.w700,
                           color: AppColors.slateDark,
                         ),
@@ -1125,38 +1162,42 @@ class ProductCardItem extends StatelessWidget {
                       Text(
                         " (98)",
                         style: TextStyle(
-                          fontSize: 10.5,
+                          fontSize: 8,
                           color: AppColors.slateMuted,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 3),
 
-                  // Price (Strictly formatted as Rs.) & Cart button
+                  // Price & Cart button
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        formattedPrice,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w900,
-                          color: AppColors.primary,
+                      Flexible(
+                        child: Text(
+                          formattedPrice,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w900,
+                            color: AppColors.primary,
+                          ),
                         ),
                       ),
                       GestureDetector(
                         onTap: stock > 0 ? () => onAddToCart(product) : null,
                         child: Container(
-                          height: 28,
-                          width: 28,
+                          height: 20,
+                          width: 20,
                           decoration: BoxDecoration(
                             color: stock > 0 ? AppColors.primary : AppColors.slateMuted,
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(5),
                           ),
                           child: const Icon(
                             Icons.add_shopping_cart_rounded,
-                            size: 15,
+                            size: 12,
                             color: Colors.white,
                           ),
                         ),

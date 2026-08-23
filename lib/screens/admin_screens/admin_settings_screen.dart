@@ -4,6 +4,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../services/platform_settings_service.dart';
+import '../../services/session_service.dart';
 import 'admin_banners_screen.dart';
 
 class AdminSettingsScreen extends StatefulWidget {
@@ -130,7 +131,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
     );
 
     if (confirm == true) {
-      await supabase.auth.signOut();
+      await SessionService.clearSession();
       if (!mounted) return;
       Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
     }

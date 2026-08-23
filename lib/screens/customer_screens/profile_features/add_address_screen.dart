@@ -148,9 +148,10 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
         elevation: 0,
+        toolbarHeight: 46.0,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.slateDark, size: 18),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.slateDark, size: 17),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -158,7 +159,7 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
           style: const TextStyle(
             color: AppColors.slateDark,
             fontWeight: FontWeight.w800,
-            fontSize: 18,
+            fontSize: 16.5,
           ),
         ),
       ),
@@ -168,33 +169,33 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
           constraints: const BoxConstraints(maxWidth: 800),
           child: SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
             child: Form(
           key: _formKey,
           child: Column(
             children: [
-              // Location Picker Banner Container
+              // Location Picker Banner Container (Compact)
               GestureDetector(
                 onTap: _pickLocationManually,
                 child: Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   decoration: BoxDecoration(
                     color: AppColors.primary,
-                    borderRadius: BorderRadius.circular(24),
+                    borderRadius: BorderRadius.circular(18),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.primary.withValues(alpha: 0.25),
-                        blurRadius: 18,
-                        offset: const Offset(0, 8),
+                        color: AppColors.primary.withValues(alpha: 0.22),
+                        blurRadius: 14,
+                        offset: const Offset(0, 5),
                       ),
                     ],
                   ),
-                  child: Column(
+                  child: Row(
                     children: [
                       Container(
-                        height: 52,
-                        width: 52,
+                        height: 40,
+                        width: 40,
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.18),
                           shape: BoxShape.circle,
@@ -205,51 +206,60 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
                         child: const Icon(
                           Icons.my_location_rounded,
                           color: Colors.white,
-                          size: 26,
+                          size: 20,
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      const Text(
-                        "Set Delivery Location",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 17,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -0.3,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "Set Delivery Location",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: -0.2,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              addressController.text.isNotEmpty
+                                  ? addressController.text
+                                  : "Tap to type or select full address",
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.88),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        addressController.text.isNotEmpty
-                            ? addressController.text
-                            : "Tap here to type or select your full address",
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.90),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
+                      const Icon(Icons.edit_location_alt_outlined, color: Colors.white, size: 18),
                     ],
                   ),
                 ),
-              ).animate().fadeIn(duration: 350.ms).slideY(begin: 0.06),
+              ).animate().fadeIn(duration: 350.ms).slideY(begin: 0.04),
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
 
-              // Form Input Card Container
+              // Form Input Card Container (Compact)
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(18),
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
+                  borderRadius: BorderRadius.circular(20),
                   border: Border.all(color: const Color(0xFFE2E8F0)),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.035),
-                      blurRadius: 16,
-                      offset: const Offset(0, 6),
+                      color: Colors.black.withValues(alpha: 0.025),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
                     ),
                   ],
                 ),
@@ -257,48 +267,54 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
                   children: [
                     TextFormField(
                       controller: fullNameController,
+                      style: const TextStyle(fontSize: 13, color: AppColors.slateDark, fontWeight: FontWeight.w500),
                       decoration: _inputDecoration("Full Name", Icons.person_outline_rounded),
                       validator: (v) => (v == null || v.trim().isEmpty) ? "Please enter full name" : null,
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
 
                     TextFormField(
                       controller: phoneController,
                       keyboardType: TextInputType.phone,
+                      style: const TextStyle(fontSize: 13, color: AppColors.slateDark, fontWeight: FontWeight.w500),
                       decoration: _inputDecoration("Phone Number", Icons.phone_outlined),
                       validator: (v) => (v == null || v.trim().isEmpty) ? "Please enter phone number" : null,
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
 
                     TextFormField(
                       controller: addressController,
                       maxLines: 2,
+                      style: const TextStyle(fontSize: 13, color: AppColors.slateDark, fontWeight: FontWeight.w500),
                       decoration: _inputDecoration("Full Address (House, Street, Area)", Icons.home_outlined),
                       validator: (v) => (v == null || v.trim().isEmpty) ? "Please enter full address" : null,
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
 
                     TextFormField(
                       controller: cityController,
+                      style: const TextStyle(fontSize: 13, color: AppColors.slateDark, fontWeight: FontWeight.w500),
                       decoration: _inputDecoration("City", Icons.location_city_outlined),
                       validator: (v) => (v == null || v.trim().isEmpty) ? "Please enter city" : null,
                     ),
 
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 12),
 
                     Container(
                       decoration: BoxDecoration(
                         color: const Color(0xFFF8FAFC),
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: const Color(0xFFE2E8F0)),
                       ),
                       child: SwitchListTile(
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+                        dense: true,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         title: const Text(
                           "Set as Default Address",
                           style: TextStyle(
                             color: AppColors.slateDark,
-                            fontSize: 14,
+                            fontSize: 13,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -306,7 +322,7 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
                           "Use as primary shipping destination",
                           style: TextStyle(
                             color: AppColors.slateMuted,
-                            fontSize: 11.5,
+                            fontSize: 11,
                           ),
                         ),
                         value: isDefault,
@@ -316,38 +332,39 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
                     ),
                   ],
                 ),
-              ).animate().fadeIn(delay: 120.ms).slideY(begin: 0.06),
+              ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.04),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
 
+              // Action Button (Compact 42px)
               SizedBox(
                 width: double.infinity,
-                height: 52,
+                height: 42,
                 child: ElevatedButton(
                   onPressed: isSaving ? null : _saveAddress,
                   style: ElevatedButton.styleFrom(
                     elevation: 0,
                     backgroundColor: AppColors.primary,
                     disabledBackgroundColor: Colors.grey.shade300,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                   ),
                   child: isSaving
                       ? const SizedBox(
-                          height: 22,
-                          width: 22,
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.4),
+                          height: 18,
+                          width: 18,
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                         )
                       : Text(
                           isEditMode ? "UPDATE ADDRESS" : "SAVE ADDRESS",
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 15,
+                            fontSize: 14,
                             fontWeight: FontWeight.w800,
-                            letterSpacing: 0.4,
+                            letterSpacing: 0.3,
                           ),
                         ),
                 ),
-              ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.06),
+              ).animate().fadeIn(delay: 180.ms).slideY(begin: 0.04),
             ],
           ),
         ),
@@ -363,27 +380,27 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
       labelStyle: const TextStyle(
         color: AppColors.slateMuted,
         fontWeight: FontWeight.w500,
-        fontSize: 13.5,
+        fontSize: 12.5,
       ),
-      prefixIcon: Icon(icon, color: AppColors.primary, size: 20),
+      prefixIcon: Icon(icon, color: AppColors.primary, size: 17),
       filled: true,
       fillColor: const Color(0xFFF8FAFC),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: AppColors.primary, width: 1.4),
       ),
       errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         borderSide: const BorderSide(color: AppColors.roseRed),
       ),
       focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: AppColors.roseRed, width: 1.5),
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: AppColors.roseRed, width: 1.4),
       ),
     );
   }

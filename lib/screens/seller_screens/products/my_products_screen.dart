@@ -474,7 +474,7 @@ class _MyProductsScreenState extends State<MyProductsScreen> {
                     child: (imageUrl != null && imageUrl.isNotEmpty)
                         ? Image.network(
                             imageUrl,
-                            fit: BoxFit.contain,
+                            fit: BoxFit.cover,
                             alignment: Alignment.center,
                             width: double.infinity,
                             height: double.infinity,

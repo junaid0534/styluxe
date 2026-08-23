@@ -18,7 +18,9 @@ import 'screens/seller_screens/seller_screens.dart';
 import 'screens/admin_screens/admin_dashboard_screen.dart';
 import 'screens/admin_screens/admin_banners_screen.dart';
 import 'screens/maintenance_screen.dart';
+import 'screens/chat/inbox_screen.dart';
 
+import 'services/session_service.dart';
 import 'theme/app_theme.dart';
 
 Future<void> main() async {
@@ -30,8 +32,39 @@ Future<void> main() async {
   runApp(const MyApp());
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.resumed ||
+        state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.detached) {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user != null) {
+        SessionService.recordActivity();
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -48,6 +81,7 @@ class MyApp extends StatelessWidget {
         '/super_admin': (context) => const SuperAdminDashboardScreen(),
         '/admin_banners': (context) => const AdminBannersScreen(),
         '/maintenance': (context) => const MaintenanceScreen(),
+        '/inbox': (context) => const InboxScreen(isCustomer: true),
         // Customer Screens
         '/customer_home': (context) => const CustomerHomeScreen(),
         '/shop_now': (context) => const ShopNowScreen(),

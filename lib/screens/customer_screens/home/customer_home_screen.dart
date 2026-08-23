@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../theme/app_theme.dart';
 import '../../../services/banner_service.dart';
+import '../../../services/session_service.dart';
+import '../../chat/inbox_screen.dart';
 import '../product/product_detail_screen.dart';
 
 class CustomerHomeScreen extends StatefulWidget {
@@ -15,6 +17,7 @@ class CustomerHomeScreen extends StatefulWidget {
 
 class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   final supabase = Supabase.instance.client;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   TextEditingController? _searchController;
   FocusNode? _searchFocusNode;
@@ -296,145 +299,71 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     }
   }
 
+  DateTime? _lastBackPressTime;
+
   // ================= BUILD UI =================
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      drawer: _buildModernDrawer(),
-      body: SafeArea(
-        child: Align(
-          alignment: Alignment.topCenter,
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1200),
-            child: CustomScrollView(
-              physics: const BouncingScrollPhysics(),
-              slivers: [
-            // ================= TOP HEADER BAR =================
-            SliverAppBar(
-              backgroundColor: Colors.white,
-              surfaceTintColor: Colors.white,
-              elevation: 0,
-              floating: true,
-              centerTitle: true,
-              leading: Builder(
-                builder: (context) => IconButton(
-                  tooltip: "Open Menu",
-                  icon: Container(
-                    height: 38,
-                    width: 38,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF1F5F9),
-                      borderRadius: BorderRadius.circular(11),
-                    ),
-                    child: const Icon(
-                      Icons.menu_rounded,
-                      color: AppColors.slateDark,
-                      size: 22,
-                    ),
-                  ),
-                  onPressed: () => Scaffold.of(context).openDrawer(),
-                ),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+
+        // If drawer is open, close drawer first
+        if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
+          _scaffoldKey.currentState?.closeDrawer();
+          return;
+        }
+
+        // If on another bottom tab, return to Home tab
+        if (currentNavIndex != 0) {
+          setState(() => currentNavIndex = 0);
+          return;
+        }
+
+        // Double press back to exit gracefully
+        final now = DateTime.now();
+        if (_lastBackPressTime == null || now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
+          _lastBackPressTime = now;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text(
+                "Press back again to exit StyLuxe",
+                style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white, fontSize: 13),
               ),
-
-              // Center Brand Title: StyLuxe
-              title: RichText(
-                text: TextSpan(
-                  children: [
-                    TextSpan(
-                      text: "Sty",
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.slateDark,
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                    TextSpan(
-                      text: "Luxe",
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.primary,
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                  ],
-                ),
+              duration: const Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+              backgroundColor: AppColors.slateDark,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          );
+        } else {
+          SystemNavigator.pop();
+        }
+      },
+      child: Scaffold(
+        key: _scaffoldKey,
+        backgroundColor: const Color(0xFFF8FAFC),
+        drawer: _buildModernDrawer(),
+        body: SafeArea(
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1200),
+              child: CustomScrollView(
+                physics: const BouncingScrollPhysics(),
+                slivers: [
+            // ================= TOP DYNAMIC HEADER BAR =================
+            SliverPersistentHeader(
+              pinned: true,
+              delegate: _HomeHeaderDelegate(
+                notificationCount: notificationCount,
+                onOpenDrawer: () => _scaffoldKey.currentState?.openDrawer(),
+                onOpenNotifications: () {
+                  Navigator.pushNamed(context, '/notifications');
+                },
+                onOpenCart: () => Navigator.pushNamed(context, '/cart'),
               ),
-
-              actions: [
-                // Notifications Icon with live counter
-                Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    IconButton(
-                      tooltip: "Notifications",
-                      icon: Container(
-                        height: 38,
-                        width: 38,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF1F5F9),
-                          borderRadius: BorderRadius.circular(11),
-                        ),
-                        child: const Icon(
-                          Icons.notifications_outlined,
-                          color: AppColors.slateDark,
-                          size: 20,
-                        ),
-                      ),
-                      onPressed: () {
-                        Navigator.pushNamed(context, '/notifications');
-                      },
-                    ),
-                    if (notificationCount > 0)
-                      Positioned(
-                        right: 4,
-                        top: 4,
-                        child: Container(
-                          padding: const EdgeInsets.all(4),
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFEF4444),
-                            shape: BoxShape.circle,
-                          ),
-                          constraints: const BoxConstraints(
-                            minWidth: 16,
-                            minHeight: 16,
-                          ),
-                          child: Text(
-                            notificationCount > 9 ? "9+" : notificationCount.toString(),
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 9,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-
-                // Cart Icon
-                IconButton(
-                  tooltip: "Cart",
-                  icon: Container(
-                    height: 38,
-                    width: 38,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF1F5F9),
-                      borderRadius: BorderRadius.circular(11),
-                    ),
-                    child: const Icon(
-                      Icons.shopping_cart_outlined,
-                      color: AppColors.slateDark,
-                      size: 20,
-                    ),
-                  ),
-                  onPressed: () => Navigator.pushNamed(context, '/cart'),
-                ),
-                const SizedBox(width: 8),
-              ],
             ),
 
             // ================= MAIN CONTENT =================
@@ -529,7 +458,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
               )
             else
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(18, 0, 18, 20),
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 20),
                 sliver: SliverGrid(
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
@@ -539,10 +468,10 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                     childCount: filteredProducts.length,
                   ),
                   gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                    maxCrossAxisExtent: 180,
-                    mainAxisExtent: 240,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
+                    maxCrossAxisExtent: 130,
+                    mainAxisExtent: 172,
+                    crossAxisSpacing: 8,
+                    mainAxisSpacing: 8,
                   ),
                 ),
               ),
@@ -551,23 +480,24 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
           ),
         ),
       ),
-      bottomNavigationBar: _buildFullWidthBottomNav(),
+        bottomNavigationBar: _buildFullWidthBottomNav(),
+      ),
     );
   }
 
   // ================= SEARCH BAR =================
   Widget _buildSearchBar() {
     return Container(
-      height: 48,
+      height: 38,
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
@@ -578,33 +508,40 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
         onSubmitted: (_) => _handleSearch(),
         style: const TextStyle(
           color: AppColors.slateDark,
-          fontSize: 14,
+          fontSize: 13,
           fontWeight: FontWeight.w500,
         ),
         decoration: InputDecoration(
+          isDense: true,
           hintText: "Search dresses, shoes, watches...",
           hintStyle: const TextStyle(
             color: AppColors.slateMuted,
-            fontSize: 13.5,
+            fontSize: 12.5,
           ),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(vertical: 14),
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+          errorBorder: InputBorder.none,
+          disabledBorder: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(vertical: 8),
           prefixIcon: const Icon(
             Icons.search_rounded,
-            size: 20,
+            size: 18,
             color: AppColors.slateMuted,
           ),
+          prefixIconConstraints: const BoxConstraints(minWidth: 36, minHeight: 34),
           suffixIcon: GestureDetector(
             onTap: _handleSearch,
             child: Container(
-              margin: const EdgeInsets.all(5),
+              margin: const EdgeInsets.fromLTRB(2, 3, 4, 3),
+              padding: const EdgeInsets.all(5),
               decoration: BoxDecoration(
                 color: AppColors.primary,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(15),
               ),
               child: const Icon(
                 Icons.tune_rounded,
-                size: 18,
+                size: 14,
                 color: Colors.white,
               ),
             ),
@@ -933,13 +870,13 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
             ),
           ],
         ),
@@ -947,101 +884,98 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Dedicated Full Fit AspectRatio Image Box (1.20)
+            // Dedicated Full Fit AspectRatio Image Box
             AspectRatio(
-              aspectRatio: 1.20,
+              aspectRatio: 1.05,
               child: Container(
                 decoration: const BoxDecoration(
-                  color: Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(14)),
+                  color: Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(13)),
                 ),
                 child: Stack(
                   children: [
                     Positioned.fill(
                       child: ClipRRect(
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
-                        child: Padding(
-                          padding: const EdgeInsets.all(3),
-                          child: imageUrl.isNotEmpty
-                              ? Image.network(
-                                  imageUrl,
-                                  width: double.infinity,
-                                  height: double.infinity,
-                                  fit: BoxFit.contain,
-                                  alignment: Alignment.center,
-                                  errorBuilder: (_, _, _) => Container(
-                                    color: const Color(0xFFF1F5F9),
-                                    child: const Center(
-                                      child: Icon(Icons.image_not_supported_outlined, color: AppColors.slateMuted),
-                                    ),
-                                  ),
-                                )
-                              : Container(
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(13)),
+                        child: imageUrl.isNotEmpty
+                            ? Image.network(
+                                imageUrl,
+                                width: double.infinity,
+                                height: double.infinity,
+                                fit: BoxFit.cover,
+                                alignment: Alignment.center,
+                                errorBuilder: (_, _, _) => Container(
                                   color: const Color(0xFFF1F5F9),
                                   child: const Center(
-                                    child: Icon(Icons.image_not_supported_outlined, color: AppColors.slateMuted),
+                                    child: Icon(Icons.image_not_supported_outlined, color: AppColors.slateMuted, size: 20),
                                   ),
                                 ),
-                        ),
+                              )
+                            : Container(
+                                color: const Color(0xFFF1F5F9),
+                                child: const Center(
+                                  child: Icon(Icons.image_not_supported_outlined, color: AppColors.slateMuted, size: 20),
+                                ),
+                              ),
                       ),
                     ),
 
-                  // Category tag with Dark Glass Backdrop
-                  Positioned(
-                    top: 6,
-                    left: 6,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.50),
-                        borderRadius: BorderRadius.circular(5),
-                      ),
-                      child: Text(
-                        category,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 9,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  // Wishlist heart button
-                  Positioned(
-                    top: 5,
-                    right: 5,
-                    child: GestureDetector(
-                      onTap: () => _toggleWishlist(id),
+                    // Category tag with Dark Glass Backdrop
+                    Positioned(
+                      top: 4,
+                      left: 4,
                       child: Container(
-                        height: 26,
-                        width: 26,
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1.5),
                         decoration: BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.10),
-                              blurRadius: 5,
-                            ),
-                          ],
+                          color: Colors.black.withValues(alpha: 0.55),
+                          borderRadius: BorderRadius.circular(4),
                         ),
-                        child: Icon(
-                          isFav ? Icons.favorite : Icons.favorite_border,
-                          size: 14,
-                          color: isFav ? AppColors.roseRed : AppColors.slateMuted,
+                        child: Text(
+                          category,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 7.5,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
+
+                    // Wishlist heart button
+                    Positioned(
+                      top: 4,
+                      right: 4,
+                      child: GestureDetector(
+                        onTap: () => _toggleWishlist(id),
+                        child: Container(
+                          height: 22,
+                          width: 22,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.10),
+                                blurRadius: 4,
+                              ),
+                            ],
+                          ),
+                          child: Icon(
+                            isFav ? Icons.favorite : Icons.favorite_border,
+                            size: 12,
+                            color: isFav ? AppColors.roseRed : AppColors.slateMuted,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
 
             // Details
             Padding(
-              padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
+              padding: const EdgeInsets.fromLTRB(6, 4, 6, 4),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -1050,22 +984,22 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
-                      fontSize: 12.5,
+                      fontSize: 11,
                       fontWeight: FontWeight.w700,
                       color: AppColors.slateDark,
                     ),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 1),
 
                   // Rating row
                   Row(
                     children: [
-                      const Icon(Icons.star_rounded, size: 12, color: Colors.amber),
+                      const Icon(Icons.star_rounded, size: 11, color: Colors.amber),
                       const SizedBox(width: 2),
                       const Text(
                         "4.8",
                         style: TextStyle(
-                          fontSize: 10.5,
+                          fontSize: 9.5,
                           fontWeight: FontWeight.w700,
                           color: AppColors.slateDark,
                         ),
@@ -1073,36 +1007,40 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                       Text(
                         " (120)",
                         style: TextStyle(
-                          fontSize: 10,
+                          fontSize: 8,
                           color: Colors.grey.shade500,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 3),
 
-                  // Price (Strictly Rs. formatted) & Add button
+                  // Price & Add button
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        formattedPrice,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w900,
-                          color: AppColors.primary,
+                      Flexible(
+                        child: Text(
+                          formattedPrice,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w900,
+                            color: AppColors.primary,
+                          ),
                         ),
                       ),
                       Container(
-                        height: 24,
-                        width: 24,
+                        height: 20,
+                        width: 20,
                         decoration: BoxDecoration(
                           color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(7),
+                          borderRadius: BorderRadius.circular(5),
                         ),
                         child: const Icon(
                           Icons.add_rounded,
-                          size: 16,
+                          size: 14,
                           color: Colors.white,
                         ),
                       ),
@@ -1120,7 +1058,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   // ================= FULL WIDTH BOTTOM NAV BAR =================
   Widget _buildFullWidthBottomNav() {
     return Container(
-      height: 64,
+      height: 50,
       width: double.infinity,
       decoration: BoxDecoration(
         color: Colors.white,
@@ -1130,8 +1068,8 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 16,
-            offset: const Offset(0, -4),
+            blurRadius: 10,
+            offset: const Offset(0, -2),
           ),
         ],
       ),
@@ -1168,10 +1106,10 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
           color: isSelected ? AppColors.primary.withValues(alpha: 0.12) : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(10),
         ),
         child: Row(
           children: [
@@ -1181,12 +1119,12 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
               color: isSelected ? AppColors.primary : AppColors.slateMuted,
             ),
             if (isSelected) ...[
-              const SizedBox(width: 6),
+              const SizedBox(width: 5),
               Text(
                 label,
                 style: const TextStyle(
                   color: AppColors.primary,
-                  fontSize: 12.5,
+                  fontSize: 12,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -1199,9 +1137,13 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
 
   // ================= MODERN NAVIGATION DRAWER =================
   Widget _buildModernDrawer() {
+    final drawerWidth = (MediaQuery.of(context).size.width * 0.72).clamp(255.0, 285.0);
     return Drawer(
+      width: drawerWidth,
       backgroundColor: Colors.white,
-      child: Column(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        physics: const BouncingScrollPhysics(),
         children: [
           // Drawer Header with User Profile Details
           UserAccountsDrawerHeader(
@@ -1252,10 +1194,10 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
             ),
           ),
 
-          // Drawer Navigation Options
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+          // Drawer Navigation Options (Scrollable together with Logout)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+            child: Column(
               children: [
                 _drawerTile(
                   icon: Icons.home_rounded,
@@ -1310,37 +1252,35 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                     Navigator.pushNamed(context, '/notifications');
                   },
                 ),
-              ],
-            ),
-          ),
-
-          const Divider(height: 1, color: Color(0xFFE2E8F0)),
-
-          // Logout Button
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 10, 12, 16),
-            child: ListTile(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              tileColor: AppColors.roseRed.withValues(alpha: 0.08),
-              leading: const Icon(
-                Icons.logout_rounded,
-                color: AppColors.roseRed,
-              ),
-              title: const Text(
-                "Logout",
-                style: TextStyle(
-                  color: AppColors.roseRed,
-                  fontWeight: FontWeight.w700,
+                _drawerTile(
+                  icon: Icons.forum_outlined,
+                  title: "Chat",
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const InboxScreen(isCustomer: true)),
+                    );
+                  },
                 ),
-              ),
-              onTap: () async {
-                await supabase.auth.signOut();
-                if (mounted) {
-                  Navigator.pushReplacementNamed(context, '/login');
-                }
-              },
+                const SizedBox(height: 6),
+                const Divider(height: 1, color: Color(0xFFE2E8F0)),
+                const SizedBox(height: 6),
+                _drawerTile(
+                  icon: Icons.logout_rounded,
+                  title: "Logout",
+                  iconColor: AppColors.roseRed,
+                  textColor: AppColors.roseRed,
+                  tileColor: AppColors.roseRed.withValues(alpha: 0.08),
+                  onTap: () async {
+                    await SessionService.clearSession();
+                    if (mounted) {
+                      Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+                    }
+                  },
+                ),
+                const SizedBox(height: 16),
+              ],
             ),
           ),
         ],
@@ -1352,6 +1292,9 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
     required IconData icon,
     required String title,
     required VoidCallback onTap,
+    Color? iconColor,
+    Color? textColor,
+    Color? tileColor,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
@@ -1359,11 +1302,12 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
-        leading: Icon(icon, color: AppColors.slateDark, size: 22),
+        tileColor: tileColor,
+        leading: Icon(icon, color: iconColor ?? AppColors.slateDark, size: 22),
         title: Text(
           title,
-          style: const TextStyle(
-            color: AppColors.slateDark,
+          style: TextStyle(
+            color: textColor ?? AppColors.slateDark,
             fontSize: 14,
             fontWeight: FontWeight.w600,
           ),
@@ -1371,5 +1315,193 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
         onTap: onTap,
       ),
     );
+  }
+}
+
+// ================= DYNAMIC SHRINKING HOME HEADER DELEGATE =================
+class _HomeHeaderDelegate extends SliverPersistentHeaderDelegate {
+  final int notificationCount;
+  final VoidCallback onOpenDrawer;
+  final VoidCallback onOpenNotifications;
+  final VoidCallback onOpenCart;
+
+  _HomeHeaderDelegate({
+    required this.notificationCount,
+    required this.onOpenDrawer,
+    required this.onOpenNotifications,
+    required this.onOpenCart,
+  });
+
+  @override
+  double get maxExtent => 50.0;
+
+  @override
+  double get minExtent => 40.0;
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    final progress = (shrinkOffset / (maxExtent - minExtent)).clamp(0.0, 1.0);
+
+    final double btnSize = 34.0 - (progress * 4.0); // 34 -> 30
+    final double iconSize = 18.0 - (progress * 2.5); // 18 -> 15.5
+    final double titleSize = 19.0 - (progress * 2.0); // 19 -> 17 (clearly visible, crisp bold)
+    final double btnRadius = 10.0 - (progress * 2.0); // 10 -> 8
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: progress > 0.3
+            ? Border(
+                bottom: BorderSide(
+                  color: const Color(0xFFE2E8F0).withValues(alpha: progress),
+                  width: 1,
+                ),
+              )
+            : null,
+        boxShadow: progress > 0.3
+            ? [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.03 * progress),
+                  blurRadius: 6,
+                  offset: const Offset(0, 2),
+                ),
+              ]
+            : null,
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      alignment: Alignment.center,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // Drawer Icon Button
+          IconButton(
+            padding: EdgeInsets.zero,
+            constraints: BoxConstraints(minWidth: btnSize, minHeight: btnSize),
+            tooltip: "Open Menu",
+            icon: Container(
+              height: btnSize,
+              width: btnSize,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(btnRadius),
+              ),
+              child: Icon(
+                Icons.menu_rounded,
+                color: AppColors.slateDark,
+                size: iconSize + 1,
+              ),
+            ),
+            onPressed: onOpenDrawer,
+          ),
+
+          // Center Brand Title: StyLuxe
+          RichText(
+            text: TextSpan(
+              children: [
+                TextSpan(
+                  text: "Sty",
+                  style: TextStyle(
+                    fontSize: titleSize,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.slateDark,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                TextSpan(
+                  text: "Luxe",
+                  style: TextStyle(
+                    fontSize: titleSize,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.primary,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Action Icons (Notifications + Cart)
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  IconButton(
+                    padding: EdgeInsets.zero,
+                    constraints: BoxConstraints(minWidth: btnSize, minHeight: btnSize),
+                    tooltip: "Notifications",
+                    icon: Container(
+                      height: btnSize,
+                      width: btnSize,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(btnRadius),
+                      ),
+                      child: Icon(
+                        Icons.notifications_outlined,
+                        color: AppColors.slateDark,
+                        size: iconSize,
+                      ),
+                    ),
+                    onPressed: onOpenNotifications,
+                  ),
+                  if (notificationCount > 0)
+                    Positioned(
+                      right: 2,
+                      top: 2,
+                      child: Container(
+                        padding: const EdgeInsets.all(2.5),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFEF4444),
+                          shape: BoxShape.circle,
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 14,
+                          minHeight: 14,
+                        ),
+                        child: Text(
+                          notificationCount > 9 ? "9+" : notificationCount.toString(),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 8,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints: BoxConstraints(minWidth: btnSize, minHeight: btnSize),
+                tooltip: "Cart",
+                icon: Container(
+                  height: btnSize,
+                  width: btnSize,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(btnRadius),
+                  ),
+                  child: Icon(
+                    Icons.shopping_cart_outlined,
+                    color: AppColors.slateDark,
+                    size: iconSize,
+                  ),
+                ),
+                onPressed: onOpenCart,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  bool shouldRebuild(covariant _HomeHeaderDelegate oldDelegate) {
+    return oldDelegate.notificationCount != notificationCount;
   }
 }

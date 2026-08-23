@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../theme/app_theme.dart';
 
@@ -179,6 +178,31 @@ class _OrderInvoiceBillScreenState extends State<OrderInvoiceBillScreen> {
     return sub;
   }
 
+  bool isItemsExpanded = false;
+
+  String _formatDeliveryDateWindow(dynamic value) {
+    final raw = value?.toString();
+    DateTime date = DateTime.now();
+    if (raw != null && raw.isNotEmpty) {
+      date = DateTime.tryParse(raw) ?? DateTime.now();
+    }
+    final deliveryDate = date.add(const Duration(days: 3));
+    const months = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    String daySuffix(int day) {
+      if (day >= 11 && day <= 13) return 'th';
+      switch (day % 10) {
+        case 1: return 'st';
+        case 2: return 'nd';
+        case 3: return 'rd';
+        default: return 'th';
+      }
+    }
+    return "${deliveryDate.day}${daySuffix(deliveryDate.day)} ${months[deliveryDate.month - 1]} ${deliveryDate.year} (08:00PM - 09:00PM)";
+  }
+
   @override
   Widget build(BuildContext context) {
     final items = _orderItems();
@@ -187,32 +211,34 @@ class _OrderInvoiceBillScreenState extends State<OrderInvoiceBillScreen> {
     final shippingFee = total > subtotal ? (total - subtotal) : 0.0;
     final status = _status();
     final statusColor = _statusColor(status);
+    final paymentMethod = order['payment_method']?.toString() ?? 'Cash on Delivery';
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
 
-      // ================= PURE WHITE STYLUXE APP BAR =================
+      // ================= COMPACT WHITE APP BAR =================
       appBar: AppBar(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
         elevation: 0,
+        toolbarHeight: 46.0,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.slateDark, size: 18),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.slateDark, size: 17),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
-          "Tax Invoice & Bill",
+          "Tax Invoice & Receipt",
           style: TextStyle(
             color: AppColors.slateDark,
             fontWeight: FontWeight.w800,
-            fontSize: 18,
+            fontSize: 16.5,
           ),
         ),
         actions: [
           IconButton(
-            tooltip: "Copy Summary",
-            icon: const Icon(Icons.copy_rounded, color: AppColors.slateDark, size: 20),
+            tooltip: "Copy Invoice Summary",
+            icon: const Icon(Icons.copy_rounded, color: AppColors.primary, size: 19),
             onPressed: () {
               Clipboard.setData(ClipboardData(
                 text: "StyLuxe Invoice #INV-${_orderNumber()}\n"
@@ -230,6 +256,11 @@ class _OrderInvoiceBillScreenState extends State<OrderInvoiceBillScreen> {
               );
             },
           ),
+          IconButton(
+            tooltip: "Refresh",
+            icon: const Icon(Icons.refresh_rounded, color: AppColors.slateDark, size: 20),
+            onPressed: fetchOrderItems,
+          ),
           const SizedBox(width: 4),
         ],
       ),
@@ -240,33 +271,22 @@ class _OrderInvoiceBillScreenState extends State<OrderInvoiceBillScreen> {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 800),
             child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+              physics: const AlwaysScrollableScrollPhysics(
+                parent: BouncingScrollPhysics(),
+              ),
+              padding: const EdgeInsets.fromLTRB(14, 10, 14, 24),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ================= OFFICIAL INVOICE PAPER CARD =================
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(22),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.04),
-                          blurRadius: 20,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
+                  // ================= 1. INVOICE OVERVIEW CARD (WITH STYLUXE BRANDING) =================
+                  _customCard(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // --- 1. INVOICE HEADER BRAND BANNER ---
+                        // Top Brand Row: StyLuxe + Official Tax Invoice Badge
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -277,7 +297,7 @@ class _OrderInvoiceBillScreenState extends State<OrderInvoiceBillScreen> {
                                       TextSpan(
                                         text: "Sty",
                                         style: TextStyle(
-                                          fontSize: 24,
+                                          fontSize: 22,
                                           fontWeight: FontWeight.w900,
                                           color: AppColors.slateDark,
                                           letterSpacing: -0.5,
@@ -286,7 +306,7 @@ class _OrderInvoiceBillScreenState extends State<OrderInvoiceBillScreen> {
                                       TextSpan(
                                         text: "Luxe",
                                         style: TextStyle(
-                                          fontSize: 24,
+                                          fontSize: 22,
                                           fontWeight: FontWeight.w900,
                                           color: AppColors.primary,
                                           letterSpacing: -0.5,
@@ -295,378 +315,599 @@ class _OrderInvoiceBillScreenState extends State<OrderInvoiceBillScreen> {
                                     ],
                                   ),
                                 ),
-                                const SizedBox(height: 2),
+                                const SizedBox(height: 1),
                                 const Text(
                                   "OFFICIAL TAX INVOICE",
                                   style: TextStyle(
                                     color: AppColors.slateMuted,
-                                    fontSize: 10.5,
+                                    fontSize: 9.5,
                                     fontWeight: FontWeight.w800,
-                                    letterSpacing: 1.2,
+                                    letterSpacing: 1.0,
                                   ),
                                 ),
                               ],
                             ),
+
+                            // Live Status Badge
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                               decoration: BoxDecoration(
                                 color: statusColor.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(20),
                                 border: Border.all(color: statusColor.withValues(alpha: 0.25)),
                               ),
-                              child: Text(
-                                status.toUpperCase(),
-                                style: TextStyle(
-                                  color: statusColor,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 0.5,
-                                ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 6,
+                                    height: 6,
+                                    decoration: BoxDecoration(
+                                      color: statusColor,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    status.toUpperCase(),
+                                    style: TextStyle(
+                                      color: statusColor,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 10.5,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
                         ),
 
-                        const SizedBox(height: 18),
-                        const Divider(color: Color(0xFFF1F5F9), thickness: 1.5),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 10),
+                        const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                        const SizedBox(height: 10),
 
-                        // --- 2. INVOICE META DATA (BILL TO & ORDER INFO) ---
+                        // Order & Invoice Numbers
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                "Invoice #INV-${_orderNumber()}",
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: AppColors.slateDark,
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              "Order #${_orderNumber()}",
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: AppColors.slateMuted,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          _formatDate(order['created_at']),
+                          style: const TextStyle(
+                            color: AppColors.slateMuted,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+
+                        const SizedBox(height: 12),
+                        const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                        const SizedBox(height: 12),
+
+                        // 3-Column Info Row
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _overviewColumn(
+                                "Items",
+                                items.isNotEmpty
+                                    ? items.length.toString().padLeft(2, '0')
+                                    : "01",
+                              ),
+                            ),
+                            Expanded(
+                              child: _overviewColumn(
+                                "Total Paid",
+                                "Rs. ${total.toStringAsFixed(0)}",
+                                isAmount: true,
+                              ),
+                            ),
+                            Expanded(
+                              child: _overviewColumn(
+                                "Payment",
+                                paymentMethod,
+                                isAlignRight: true,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // ================= 2. DELIVERY INFORMATION CARD =================
+                  _customCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          "Delivery Information",
+                          style: TextStyle(
+                            color: AppColors.slateDark,
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+
+                        // Location
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  _metaTitle("INVOICE NUMBER"),
-                                  _metaValue("#INV-${_orderNumber()}"),
-                                  const SizedBox(height: 10),
-                                  _metaTitle("ORDER REFERENCE"),
-                                  _metaValue("#ORD-${_orderNumber()}"),
-                                  const SizedBox(height: 10),
-                                  _metaTitle("DATE & TIME"),
-                                  _metaValue(_formatDate(order['created_at'])),
-                                ],
-                              ),
+                            const Icon(
+                              Icons.location_on_outlined,
+                              color: Color(0xFFE11D48),
+                              size: 18,
                             ),
-                            const SizedBox(width: 16),
+                            const SizedBox(width: 8),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  _metaTitle("DELIVERY ADDRESS"),
-                                  _metaValue(order['address']?.toString() ?? "N/A"),
-                                  const SizedBox(height: 10),
-                                  _metaTitle("PAYMENT METHOD"),
-                                  _metaValue(order['payment_method']?.toString() ?? "Cash on Delivery"),
-                                  const SizedBox(height: 10),
-                                  _metaTitle("PAYMENT STATUS"),
-                                  _metaValue(order['payment_status']?.toString() ?? "Completed / COD"),
+                                  const Text(
+                                    "Location",
+                                    style: TextStyle(
+                                      color: Color(0xFFE11D48),
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    order['address']?.toString() ?? "No delivery address recorded",
+                                    style: const TextStyle(
+                                      color: AppColors.slateDark,
+                                      fontSize: 12,
+                                      height: 1.35,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
                           ],
                         ),
 
-                        const SizedBox(height: 22),
-                        const Text(
-                          "PURCHASED ITEMS BREAKDOWN",
-                          style: TextStyle(
-                            color: AppColors.slateMuted,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 0.8,
-                          ),
-                        ),
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 10),
 
-                        // --- 3. ITEMIZED MULTIPLICATION TABLE ---
-                        Container(
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF8FAFC),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: const Color(0xFFE2E8F0)),
-                          ),
-                          child: Column(
-                            children: [
-                              // Table Header Row
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFFF1F5F9),
-                                  borderRadius: BorderRadius.vertical(top: Radius.circular(15)),
-                                ),
-                                child: const Row(
+                        // Delivery Date & Time
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(
+                              Icons.calendar_today_outlined,
+                              color: Color(0xFFE11D48),
+                              size: 16,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    "Delivery Date & Time",
+                                    style: TextStyle(
+                                      color: Color(0xFFE11D48),
+                                      fontSize: 11.5,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    _formatDeliveryDateWindow(order['created_at']),
+                                    style: const TextStyle(
+                                      color: AppColors.slateDark,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // ================= 3. ITEMS CARD (EXPANDABLE DROPDOWN) =================
+                  _customCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Dropdown Header Row
+                        InkWell(
+                          onTap: () {
+                            setState(() {
+                              isItemsExpanded = !isItemsExpanded;
+                            });
+                          },
+                          borderRadius: BorderRadius.circular(8),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 2),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
                                   children: [
-                                    Expanded(
-                                      flex: 5,
-                                      child: Text(
-                                        "Item Name",
-                                        style: TextStyle(
-                                          color: AppColors.slateDark,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w800,
-                                        ),
+                                    Text(
+                                      "Purchased Items (${items.length})",
+                                      style: const TextStyle(
+                                        color: AppColors.slateDark,
+                                        fontSize: 13.5,
+                                        fontWeight: FontWeight.w800,
                                       ),
                                     ),
-                                    Expanded(
-                                      flex: 4,
-                                      child: Text(
-                                        "Qty × Price",
-                                        textAlign: TextAlign.center,
-                                        style: TextStyle(
-                                          color: AppColors.slateDark,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w800,
-                                        ),
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.primary.withValues(alpha: 0.10),
+                                        borderRadius: BorderRadius.circular(6),
                                       ),
-                                    ),
-                                    Expanded(
-                                      flex: 3,
                                       child: Text(
-                                        "Total",
-                                        textAlign: TextAlign.right,
-                                        style: TextStyle(
-                                          color: AppColors.slateDark,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w800,
+                                        isItemsExpanded ? "Tap to hide" : "Tap to view",
+                                        style: const TextStyle(
+                                          color: AppColors.primary,
+                                          fontSize: 10.5,
+                                          fontWeight: FontWeight.w700,
                                         ),
                                       ),
                                     ),
                                   ],
                                 ),
-                              ),
-
-                              // Table Item Rows
-                              if (items.isEmpty)
-                                const Padding(
-                                  padding: EdgeInsets.all(20.0),
-                                  child: Center(
-                                    child: Text(
-                                      "No item breakdown recorded",
-                                      style: TextStyle(color: AppColors.slateMuted, fontSize: 13, fontWeight: FontWeight.w500),
-                                    ),
-                                  ),
-                                )
-                              else
-                                ...items.asMap().entries.map((entry) {
-                                  final index = entry.key;
-                                  final item = entry.value;
-
-                                  final name = item['product_name']?.toString() ?? item['name']?.toString() ?? 'Product ${index + 1}';
-                                  final qty = (item['quantity'] as num?)?.toInt() ?? 1;
-                                  final unitPrice = _amount(item['price']);
-                                  final lineTotal = unitPrice * qty;
-
-                                  return Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                    decoration: BoxDecoration(
-                                      border: index < items.length - 1
-                                          ? const Border(bottom: BorderSide(color: Color(0xFFE2E8F0)))
-                                          : null,
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        // Item Name & Category
-                                        Expanded(
-                                          flex: 5,
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                "${index + 1}. $name",
-                                                maxLines: 2,
-                                                overflow: TextOverflow.ellipsis,
-                                                style: const TextStyle(
-                                                  color: AppColors.slateDark,
-                                                  fontSize: 13,
-                                                  fontWeight: FontWeight.w700,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-
-                                        // Qty x Unit Price Calculation Formula
-                                        Expanded(
-                                          flex: 4,
-                                          child: Text(
-                                            "$qty × Rs. ${unitPrice.toStringAsFixed(0)}",
-                                            textAlign: TextAlign.center,
-                                            style: const TextStyle(
-                                              color: AppColors.slateMuted,
-                                              fontSize: 12.5,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                        ),
-
-                                        // Total Price
-                                        Expanded(
-                                          flex: 3,
-                                          child: Text(
-                                            "Rs. ${lineTotal.toStringAsFixed(0)}",
-                                            textAlign: TextAlign.right,
-                                            style: const TextStyle(
-                                              color: AppColors.slateDark,
-                                              fontSize: 13.5,
-                                              fontWeight: FontWeight.w800,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                }),
-                            ],
+                                Icon(
+                                  isItemsExpanded
+                                      ? Icons.keyboard_arrow_up_rounded
+                                      : Icons.keyboard_arrow_down_rounded,
+                                  color: AppColors.primary,
+                                  size: 22,
+                                ),
+                              ],
+                            ),
                           ),
                         ),
 
-                        const SizedBox(height: 22),
-
-                        // --- 4. FINANCIAL SUMMARY BREAKDOWN ---
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF8FAFC),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: const Color(0xFFE2E8F0)),
-                          ),
-                          child: Column(
-                            children: [
-                              _summaryRow("Subtotal", "Rs. ${subtotal.toStringAsFixed(0)}"),
-                              const SizedBox(height: 8),
-                              _summaryRow("Delivery Charges", shippingFee > 0 ? "Rs. ${shippingFee.toStringAsFixed(0)}" : "FREE"),
-                              const SizedBox(height: 8),
-                              _summaryRow("Sales Tax / VAT (0%)", "Rs. 0"),
-                              const Padding(
-                                padding: EdgeInsets.symmetric(vertical: 10),
-                                child: Divider(color: Color(0xFFCBD5E1)),
+                        // Collapsed Preview
+                        if (!isItemsExpanded && items.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          InkWell(
+                            onTap: () => setState(() => isItemsExpanded = true),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF8FAFC),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: const Color(0xFFF1F5F9)),
                               ),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              child: Row(
                                 children: [
-                                  const Text(
-                                    "GRAND TOTAL PAID",
-                                    style: TextStyle(
-                                      color: AppColors.slateDark,
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w900,
+                                  // Mini Thumbnails
+                                  SizedBox(
+                                    height: 28,
+                                    child: ListView.builder(
+                                      shrinkWrap: true,
+                                      scrollDirection: Axis.horizontal,
+                                      physics: const NeverScrollableScrollPhysics(),
+                                      itemCount: items.length > 3 ? 3 : items.length,
+                                      itemBuilder: (context, idx) {
+                                        final img = items[idx]['image_url']?.toString() ?? '';
+                                        return Container(
+                                          width: 28,
+                                          height: 28,
+                                          margin: const EdgeInsets.only(right: 6),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white,
+                                            borderRadius: BorderRadius.circular(6),
+                                            border: Border.all(color: const Color(0xFFE2E8F0)),
+                                          ),
+                                          child: ClipRRect(
+                                            borderRadius: BorderRadius.circular(5),
+                                            child: img.isNotEmpty
+                                                ? Image.network(
+                                                    img,
+                                                    fit: BoxFit.cover,
+                                                    errorBuilder: (context, error, stackTrace) => const Icon(
+                                                      Icons.checkroom_rounded,
+                                                      size: 14,
+                                                      color: AppColors.slateMuted,
+                                                    ),
+                                                  )
+                                                : const Icon(
+                                                    Icons.checkroom_rounded,
+                                                    size: 14,
+                                                    color: AppColors.slateMuted,
+                                                  ),
+                                          ),
+                                        );
+                                      },
                                     ),
                                   ),
-                                  Text(
-                                    "Rs. ${total.toStringAsFixed(0)}",
-                                    style: const TextStyle(
-                                      color: AppColors.primary,
-                                      fontSize: 22,
-                                      fontWeight: FontWeight.w900,
-                                      letterSpacing: -0.4,
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      items.length > 1
+                                          ? "${items.first['product_name']} +${items.length - 1} more"
+                                          : "${items.first['product_name']}",
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: AppColors.slateDark,
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
                                   ),
+                                  const Icon(Icons.arrow_forward_ios_rounded, size: 12, color: AppColors.slateMuted),
                                 ],
                               ),
-                            ],
+                            ),
                           ),
-                        ),
+                        ],
 
-                        const SizedBox(height: 24),
-                        const Divider(color: Color(0xFFF1F5F9)),
-                        const SizedBox(height: 14),
+                        // Expanded Items List
+                        if (isItemsExpanded) ...[
+                          const SizedBox(height: 8),
+                          if (items.isEmpty)
+                            const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 8),
+                              child: Text(
+                                "No items recorded on this invoice",
+                                style: TextStyle(color: AppColors.slateMuted, fontSize: 12),
+                              ),
+                            )
+                          else
+                            ListView.separated(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: items.length,
+                              separatorBuilder: (context, index) => const Divider(height: 12, thickness: 0.8, color: Color(0xFFF8FAFC)),
+                              itemBuilder: (context, idx) {
+                                final itm = items[idx];
+                                final name = itm['product_name']?.toString() ?? 'Product Item';
+                                final qty = (itm['quantity'] as num?)?.toInt() ?? 1;
+                                final price = _amount(itm['price']);
+                                final lineTotal = price * qty;
+                                final img = itm['image_url']?.toString() ?? '';
 
-                        // --- 5. OFFICIAL FOOTER STAMP & WARRANTY ---
-                        Center(
-                          child: Column(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary.withValues(alpha: 0.10),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: const Row(
-                                  mainAxisSize: MainAxisSize.min,
+                                return Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
                                   children: [
-                                    Icon(Icons.verified_rounded, size: 16, color: AppColors.primary),
-                                    SizedBox(width: 6),
+                                    Container(
+                                      width: 44,
+                                      height: 44,
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFF8FAFC),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                                      ),
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(7),
+                                        child: img.isNotEmpty
+                                            ? Image.network(
+                                                img,
+                                                fit: BoxFit.cover,
+                                                errorBuilder: (context, error, stackTrace) => const Icon(
+                                                  Icons.checkroom_rounded,
+                                                  color: AppColors.slateMuted,
+                                                  size: 18,
+                                                ),
+                                              )
+                                            : const Icon(
+                                                Icons.checkroom_rounded,
+                                                color: AppColors.slateMuted,
+                                                size: 18,
+                                              ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            name,
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                              color: AppColors.slateDark,
+                                              fontSize: 12.5,
+                                              fontWeight: FontWeight.w600,
+                                              height: 1.25,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            "Qty: $qty × Rs. ${price.toStringAsFixed(0)}",
+                                            style: const TextStyle(
+                                              color: AppColors.slateMuted,
+                                              fontSize: 11.5,
+                                              fontWeight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
                                     Text(
-                                      "StyLuxe Verified Tax Invoice",
-                                      style: TextStyle(
-                                        color: AppColors.primary,
-                                        fontSize: 11.5,
+                                      "Rs. ${lineTotal.toStringAsFixed(0)}",
+                                      style: const TextStyle(
+                                        color: Color(0xFFE11D48),
+                                        fontSize: 13,
                                         fontWeight: FontWeight.w800,
                                       ),
                                     ),
                                   ],
-                                ),
+                                );
+                              },
+                            ),
+                        ],
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // ================= 4. FINANCIAL SUMMARY CARD =================
+                  _customCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          "Invoice Financial Summary",
+                          style: TextStyle(
+                            color: AppColors.slateDark,
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        _billSummaryRow("Subtotal", "Rs. ${subtotal.toStringAsFixed(0)}"),
+                        const SizedBox(height: 6),
+                        _billSummaryRow("Delivery Fee", shippingFee > 0 ? "Rs. ${shippingFee.toStringAsFixed(0)}" : "FREE"),
+                        const SizedBox(height: 6),
+                        _billSummaryRow("Sales Tax / VAT (0%)", "Rs. 0"),
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 8),
+                          child: Divider(height: 1, color: Color(0xFFF1F5F9)),
+                        ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              "Total Amount Paid",
+                              style: TextStyle(
+                                color: AppColors.slateDark,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w800,
                               ),
-                              const SizedBox(height: 8),
-                              const Text(
-                                "Thank you for shopping at StyLuxe Fashion! 7-Day Replacement Warranty applies.",
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: AppColors.slateMuted,
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w500,
-                                ),
+                            ),
+                            Text(
+                              "Rs. ${total.toStringAsFixed(0)}",
+                              style: const TextStyle(
+                                color: AppColors.primary,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w900,
                               ),
-                            ],
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // ================= 5. OFFICIAL FOOTER STAMP =================
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.primary.withValues(alpha: 0.20)),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.verified_rounded, size: 16, color: AppColors.primary),
+                        SizedBox(width: 6),
+                        Text(
+                          "StyLuxe Verified Tax Invoice • 7-Day Warranty",
+                          style: TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ],
                     ),
-                  ).animate().fadeIn(duration: 350.ms).slideY(begin: 0.05),
+                  ),
 
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 14),
 
-                  // ================= BOTTOM ACTION BUTTONS =================
+                  // ================= 6. COMPACT ACTION BUTTONS =================
                   Row(
                     children: [
                       Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () {
-                            Clipboard.setData(ClipboardData(
-                              text: "StyLuxe Tax Invoice #${_orderNumber()}\nTotal Amount: Rs. ${total.toStringAsFixed(0)}\nStatus: $status"
-                            ));
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text("Invoice bill copied to clipboard!"),
-                                backgroundColor: AppColors.primary,
-                              ),
-                            );
-                          },
-                          icon: const Icon(Icons.copy_rounded, color: AppColors.slateDark, size: 18),
-                          label: const Text("Copy Bill", style: TextStyle(color: AppColors.slateDark, fontWeight: FontWeight.w800, fontSize: 14)),
-                          style: OutlinedButton.styleFrom(
-                            minimumSize: const Size.fromHeight(52),
-                            side: const BorderSide(color: Color(0xFFE2E8F0)),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        child: SizedBox(
+                          height: 38,
+                          child: OutlinedButton.icon(
+                            onPressed: () {
+                              Clipboard.setData(ClipboardData(
+                                text: "StyLuxe Tax Invoice #${_orderNumber()}\nTotal Amount: Rs. ${total.toStringAsFixed(0)}\nStatus: $status"
+                              ));
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text("Invoice bill copied to clipboard!"),
+                                  backgroundColor: AppColors.primary,
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.copy_rounded, color: AppColors.slateDark, size: 15),
+                            label: const Text("Copy Bill", style: TextStyle(color: AppColors.slateDark, fontWeight: FontWeight.w700, fontSize: 12.5)),
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: Color(0xFFCBD5E1)),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              padding: EdgeInsets.zero,
+                            ),
                           ),
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 8),
                       Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text("Downloading official Tax Invoice PDF..."),
-                                backgroundColor: AppColors.primary,
-                              ),
-                            );
-                          },
-                          icon: const Icon(Icons.download_rounded, color: Colors.white, size: 18),
-                          label: const Text("Download PDF", style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 14)),
-                          style: ElevatedButton.styleFrom(
-                            minimumSize: const Size.fromHeight(52),
-                            elevation: 0,
-                            backgroundColor: AppColors.primary,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        child: SizedBox(
+                          height: 38,
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text("Downloading official Tax Invoice PDF..."),
+                                  backgroundColor: AppColors.primary,
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.download_rounded, color: Colors.white, size: 15),
+                            label: const Text("Download PDF", style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 12.5)),
+                            style: ElevatedButton.styleFrom(
+                              elevation: 0,
+                              backgroundColor: AppColors.primary,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              padding: EdgeInsets.zero,
+                            ),
                           ),
                         ),
                       ),
                     ],
-                  ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.05),
+                  ),
                 ],
               ),
             ),
@@ -676,37 +917,73 @@ class _OrderInvoiceBillScreenState extends State<OrderInvoiceBillScreen> {
     );
   }
 
-  Widget _metaTitle(String title) {
-    return Text(
-      title,
-      style: const TextStyle(
-        color: AppColors.slateMuted,
-        fontSize: 10.5,
-        fontWeight: FontWeight.w800,
-        letterSpacing: 0.5,
+  Widget _customCard({required Widget child}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
+      child: child,
     );
   }
 
-  Widget _metaValue(String value) {
-    return Text(
-      value,
-      maxLines: 2,
-      overflow: TextOverflow.ellipsis,
-      style: const TextStyle(
-        color: AppColors.slateDark,
-        fontSize: 13,
-        fontWeight: FontWeight.w700,
-      ),
+  Widget _overviewColumn(String label, String value, {bool isAmount = false, bool isAlignRight = false}) {
+    return Column(
+      crossAxisAlignment: isAlignRight ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            color: AppColors.slateMuted,
+            fontSize: 9.5,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            color: AppColors.slateDark,
+            fontSize: 12.5,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ],
     );
   }
 
-  Widget _summaryRow(String label, String value) {
+  Widget _billSummaryRow(String label, String value) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: const TextStyle(color: AppColors.slateMuted, fontSize: 13.5, fontWeight: FontWeight.w500)),
-        Text(value, style: const TextStyle(color: AppColors.slateDark, fontSize: 14, fontWeight: FontWeight.w700)),
+        Text(
+          label,
+          style: const TextStyle(
+            color: AppColors.slateMuted,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        Text(
+          value,
+          style: const TextStyle(
+            color: AppColors.slateDark,
+            fontSize: 12.5,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
       ],
     );
   }

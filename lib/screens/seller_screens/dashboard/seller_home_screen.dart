@@ -1,8 +1,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../services/session_service.dart';
+import '../../chat/inbox_screen.dart';
 
 class SellerHomeScreen extends StatefulWidget {
   const SellerHomeScreen({super.key});
@@ -276,27 +279,72 @@ class _SellerHomeScreenState extends State<SellerHomeScreen> {
     return amount.toStringAsFixed(0);
   }
 
+  DateTime? _lastBackPressTime;
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      drawer: _buildDrawer(),
-      backgroundColor: bgColor,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+
+        // If drawer is open, close it first
+        final isDrawerOpen = Scaffold.maybeOf(context)?.isDrawerOpen ?? false;
+        if (isDrawerOpen) {
+          Navigator.pop(context);
+          return;
+        }
+
+        // Double press back to exit gracefully
+        final now = DateTime.now();
+        if (_lastBackPressTime == null || now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
+          _lastBackPressTime = now;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text(
+                "Press back again to exit Seller Center",
+                style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white, fontSize: 13),
+              ),
+              duration: const Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+              backgroundColor: slateDark,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          );
+        } else {
+          SystemNavigator.pop();
+        }
+      },
+      child: Scaffold(
+        drawer: _buildDrawer(),
+        backgroundColor: bgColor,
       appBar: AppBar(
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
         elevation: 0,
+        toolbarHeight: 46.0,
         centerTitle: true,
         leading: Builder(
           builder: (context) => IconButton(
-            icon: const Icon(Icons.menu_rounded, color: slateDark, size: 26),
+            icon: const Icon(Icons.menu_rounded, color: slateDark, size: 22),
             onPressed: () => Scaffold.of(context).openDrawer(),
           ),
         ),
         title: const Text(
           "StyLuxe",
-          style: TextStyle(color: slateDark, fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: -0.5),
+          style: TextStyle(color: slateDark, fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: -0.4),
         ),
         actions: [
+          IconButton(
+            tooltip: "Customer Messages",
+            icon: const Icon(Icons.forum_outlined, color: slateDark, size: 23),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const InboxScreen(isCustomer: false)),
+              );
+            },
+          ),
           IconButton(
             icon: Stack(
               clipBehavior: Clip.none,
@@ -399,11 +447,12 @@ class _SellerHomeScreenState extends State<SellerHomeScreen> {
                 ),
               ),
             ),
-      bottomNavigationBar: AnimatedSlide(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-        offset: _isNavVisible ? Offset.zero : const Offset(0, 1.5),
-        child: _buildSellerBottomNav(0),
+        bottomNavigationBar: AnimatedSlide(
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+          offset: _isNavVisible ? Offset.zero : const Offset(0, 1.5),
+          child: _buildSellerBottomNav(0),
+        ),
       ),
     );
   }
@@ -489,7 +538,9 @@ class _SellerHomeScreenState extends State<SellerHomeScreen> {
 
   // ================= DRAWER MENU =================
   Widget _buildDrawer() {
+    final drawerWidth = (MediaQuery.of(context).size.width * 0.72).clamp(255.0, 285.0);
     return Drawer(
+      width: drawerWidth,
       backgroundColor: Colors.white,
       child: ListView(
         padding: EdgeInsets.zero,
@@ -569,6 +620,17 @@ class _SellerHomeScreenState extends State<SellerHomeScreen> {
               Navigator.pushNamed(context, '/seller_reviews');
             },
           ),
+          ListTile(
+            leading: const Icon(Icons.forum_outlined, color: sapphireBlue),
+            title: const Text("Chat", style: TextStyle(fontWeight: FontWeight.w700)),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const InboxScreen(isCustomer: false)),
+              );
+            },
+          ),
           const Divider(),
           ListTile(
             leading: const Icon(Icons.settings_outlined, color: sapphireBlue),
@@ -582,8 +644,8 @@ class _SellerHomeScreenState extends State<SellerHomeScreen> {
             leading: const Icon(Icons.logout_rounded, color: Colors.red),
             title: const Text("Logout", style: TextStyle(color: Colors.red, fontWeight: FontWeight.w700)),
             onTap: () async {
-              await supabase.auth.signOut();
-              if (mounted) Navigator.pushReplacementNamed(context, '/login');
+              await SessionService.clearSession();
+              if (mounted) Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
             },
           ),
         ],

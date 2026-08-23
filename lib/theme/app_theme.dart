@@ -160,14 +160,16 @@ class AppTheme {
         ),
       ),
       appBarTheme: AppBarTheme(
-        backgroundColor: Colors.transparent,
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
         elevation: 0,
         centerTitle: true,
-        iconTheme: const IconThemeData(color: AppColors.slateDark),
+        toolbarHeight: 46.0,
+        iconTheme: const IconThemeData(color: AppColors.slateDark, size: 20),
         titleTextStyle: GoogleFonts.poppins(
           color: AppColors.slateDark,
-          fontSize: 18,
-          fontWeight: FontWeight.w700,
+          fontSize: 16,
+          fontWeight: FontWeight.w800,
         ),
       ),
       cardTheme: CardThemeData(
