@@ -5,6 +5,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../widgets/seller_bottom_nav.dart';
 
 class SellerAnalyticsScreen extends StatefulWidget {
   const SellerAnalyticsScreen({super.key});
@@ -788,7 +789,7 @@ class _SellerAnalyticsScreenState extends State<SellerAnalyticsScreen> {
                 ),
               ),
             ),
-      bottomNavigationBar: _buildSellerBottomNav(3),
+      bottomNavigationBar: const SellerBottomNav(currentIndex: 3),
     );
   }
 
@@ -1350,65 +1351,4 @@ class _SellerAnalyticsScreenState extends State<SellerAnalyticsScreen> {
     );
   }
 
-  // ================= 5-TAB SELLER BOTTOM NAV BAR =================
-  Widget _buildSellerBottomNav(int currentIndex) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 16,
-            offset: const Offset(0, -4),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
-        child: BottomNavigationBar(
-          currentIndex: currentIndex,
-          onTap: (index) {
-            if (index == 0) Navigator.pushReplacementNamed(context, '/seller');
-            if (index == 1) Navigator.pushNamed(context, '/active_orders');
-            if (index == 2) Navigator.pushNamed(context, '/my_products');
-            if (index == 3) Navigator.pushNamed(context, '/seller_analytics');
-            if (index == 4) Navigator.pushNamed(context, '/manage_store');
-          },
-          type: BottomNavigationBarType.fixed,
-          backgroundColor: Colors.white,
-          selectedItemColor: sapphireBlue,
-          unselectedItemColor: slateMuted,
-          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 11),
-          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 11),
-          elevation: 0,
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home_rounded),
-              label: "Home",
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.local_mall_outlined),
-              activeIcon: Icon(Icons.local_mall_rounded),
-              label: "Orders",
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.inventory_2_outlined),
-              activeIcon: Icon(Icons.inventory_2_rounded),
-              label: "Products",
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.bar_chart_rounded),
-              label: "Analytics",
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.settings_outlined),
-              activeIcon: Icon(Icons.settings_rounded),
-              label: "Settings",
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }

@@ -6,6 +6,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../services/session_service.dart';
 import '../../chat/inbox_screen.dart';
+import '../../../widgets/seller_bottom_nav.dart';
 
 class SellerHomeScreen extends StatefulWidget {
   const SellerHomeScreen({super.key});
@@ -35,6 +36,9 @@ class _SellerHomeScreenState extends State<SellerHomeScreen> {
   bool isLoading = true;
   bool _isNavVisible = true;
 
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = "";
+
   String selectedGraphFilter = "Weekly";
   String selectedOrderFilter = "All";
   int? hoveredGraphIndex;
@@ -52,10 +56,8 @@ class _SellerHomeScreenState extends State<SellerHomeScreen> {
 
   // Theme Constants: Royal Sapphire Blue & Pure White Studio
   static const Color sapphireBlue = Color(0xFF2563EB);
-  static const Color sapphireLight = Color(0xFFEFF6FF);
   static const Color slateDark = Color(0xFF0F172A);
   static const Color slateMuted = Color(0xFF64748B);
-  static const Color cardBorderColor = Color(0xFF93C5FD);
   static const Color bgColor = Colors.white;
 
   @override
@@ -82,6 +84,7 @@ class _SellerHomeScreenState extends State<SellerHomeScreen> {
 
   @override
   void dispose() {
+    _searchController.dispose();
     _scrollController.removeListener(_scrollListener);
     _scrollController.dispose();
     _ordersSubscription?.cancel();
@@ -420,6 +423,11 @@ class _SellerHomeScreenState extends State<SellerHomeScreen> {
                                 ),
                               ).animate().fadeIn(duration: 300.ms).slideY(begin: -0.05),
 
+                            // ================= 0. SEARCH BAR (CLEAN PHARMACY / DASHBOARD STYLE) =================
+                            _buildDashboardSearchBar().animate().fadeIn(duration: 350.ms).slideY(begin: -0.05),
+
+                            const SizedBox(height: 14),
+
                             // ================= 1. ROYAL SAPPHIRE BLUE HERO CARD =================
                             _revenueHeroCard().animate().fadeIn(duration: 400.ms).slideY(begin: 0.05),
 
@@ -451,365 +459,820 @@ class _SellerHomeScreenState extends State<SellerHomeScreen> {
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeInOut,
           offset: _isNavVisible ? Offset.zero : const Offset(0, 1.5),
-          child: _buildSellerBottomNav(0),
+          child: const SellerBottomNav(currentIndex: 0),
         ),
       ),
     );
   }
 
-  // ================= 1. REVENUE HERO CARD WITH STORE HEALTH BADGE =================
+  // ================= 0. DASHBOARD SEARCH BAR (CLEAN MODERN PILL) =================
+  Widget _buildDashboardSearchBar() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: TextField(
+        controller: _searchController,
+        onChanged: (val) {
+          setState(() {
+            _searchQuery = val.trim().toLowerCase();
+          });
+        },
+        style: const TextStyle(
+          color: slateDark,
+          fontSize: 13.5,
+          fontWeight: FontWeight.w600,
+        ),
+        decoration: InputDecoration(
+          hintText: "Search orders, products, customers...",
+          hintStyle: const TextStyle(
+            color: slateMuted,
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+          ),
+          prefixIcon: const Icon(Icons.search_rounded, color: slateMuted, size: 21),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.close_rounded, color: slateMuted, size: 18),
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() => _searchQuery = '');
+                  },
+                )
+              : Padding(
+                  padding: const EdgeInsets.only(right: 8.0, top: 6.0, bottom: 6.0),
+                  child: InkWell(
+                    onTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: const Text(
+                            "Type to instantly filter recent orders or select status filters below",
+                            style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+                          ),
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      width: 34,
+                      height: 34,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      alignment: Alignment.center,
+                      child: const Icon(Icons.tune_rounded, color: slateDark, size: 17),
+                    ),
+                  ),
+                ),
+          border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        ),
+      ),
+    );
+  }
+
+  // ================= 1. REVENUE HERO CARD (ANIMATED LUXURY SAPPHIRE WITH 4 QUICK ACTIONS) =================
   Widget _revenueHeroCard() {
-    return InkWell(
-      onTap: () => Navigator.pushNamed(context, '/seller_revenue'),
-      borderRadius: BorderRadius.circular(24),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(22),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
+            colors: [Color(0xFF1E3A8A), Color(0xFF1D4ED8), Color(0xFF2563EB)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(22),
           boxShadow: [
             BoxShadow(
-              color: sapphireBlue.withValues(alpha: 0.35),
+              color: const Color(0xFF1D4ED8).withValues(alpha: 0.35),
               blurRadius: 20,
               offset: const Offset(0, 8),
             ),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Stack(
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  "Today's Sales Revenue",
-                  style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600),
+            // Background decorative glowing glass circles for texture & depth
+            Positioned(
+              top: -30,
+              right: -25,
+              child: Container(
+                width: 120,
+                height: 120,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: 0.08),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.18),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Row(
+              ),
+            ),
+            Positioned(
+              bottom: -40,
+              left: 60,
+              child: Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withValues(alpha: 0.05),
+                ),
+              ),
+            ),
+
+            // Card Content
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Icon(Icons.verified_rounded, color: Colors.white, size: 13),
-                      SizedBox(width: 4),
-                      Text("VERIFIED STORE", style: TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.w900)),
+                      Row(
+                        children: [
+                          const Icon(Icons.auto_awesome_rounded, color: Colors.white70, size: 12.5)
+                              .animate(onPlay: (c) => c.repeat(reverse: true))
+                              .scale(begin: const Offset(0.85, 0.85), end: const Offset(1.15, 1.15), duration: 1200.ms),
+                          const SizedBox(width: 5),
+                          const Text(
+                            "TODAY'S SALES REVENUE",
+                            style: TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.8),
+                          ),
+                        ],
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 5.5,
+                              height: 5.5,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF10B981),
+                                shape: BoxShape.circle,
+                              ),
+                            )
+                                .animate(onPlay: (c) => c.repeat(reverse: true))
+                                .scale(begin: const Offset(0.8, 0.8), end: const Offset(1.4, 1.4), duration: 800.ms),
+                            const SizedBox(width: 4),
+                            const Text("VERIFIED STORE", style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900)),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            TweenAnimationBuilder<double>(
-              tween: Tween<double>(begin: 0, end: todaysRevenue),
-              duration: const Duration(milliseconds: 800),
-              builder: (context, val, child) {
-                return Text(
-                  "Rs. ${_formattedAmount(val)}",
-                  style: const TextStyle(color: Colors.white, fontSize: 34, fontWeight: FontWeight.w900, letterSpacing: -0.5),
-                );
-              },
-            ),
-            const SizedBox(height: 14),
-            Divider(color: Colors.white.withValues(alpha: 0.15), height: 1),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  "Total Store Earnings: Rs. ${_formattedAmount(totalRevenue)}",
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 12.5, fontWeight: FontWeight.w700),
-                ),
-                const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white70, size: 12),
-              ],
+                  const SizedBox(height: 6),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: InkWell(
+                          onTap: () => Navigator.pushNamed(context, '/seller_revenue'),
+                          borderRadius: BorderRadius.circular(8),
+                          child: TweenAnimationBuilder<double>(
+                            tween: Tween<double>(begin: 0, end: todaysRevenue),
+                            duration: const Duration(milliseconds: 900),
+                            builder: (context, val, child) {
+                              return Text(
+                                "Rs. ${_formattedAmount(val)}",
+                                style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.w900, letterSpacing: -0.5),
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF10B981).withValues(alpha: 0.25),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.4)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.arrow_upward_rounded, color: Color(0xFF34D399), size: 11),
+                            const SizedBox(width: 2),
+                            Text(
+                              todaysRevenue > 0 ? "+${((todaysRevenue / (totalRevenue == 0 ? 1 : totalRevenue)) * 100).toStringAsFixed(0)}%" : "+18%",
+                              style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w800),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // ================= 4 PURE WHITE QUICK ACTION BUTTONS =================
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _heroQuickActionButton(
+                        icon: Icons.add_rounded,
+                        label: "Add Product",
+                        iconColor: sapphireBlue,
+                        onTap: () => Navigator.pushNamed(context, '/add_product'),
+                      ),
+                      _heroQuickActionButton(
+                        icon: Icons.inventory_2_rounded,
+                        label: "My Products",
+                        iconColor: sapphireBlue,
+                        onTap: () => Navigator.pushNamed(context, '/my_products'),
+                      ),
+                      _heroQuickActionButton(
+                        icon: Icons.receipt_long_rounded,
+                        label: "Active Orders",
+                        iconColor: sapphireBlue,
+                        badge: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF10B981),
+                            borderRadius: BorderRadius.circular(7),
+                            border: Border.all(color: Colors.white, width: 1),
+                          ),
+                          child: Text(
+                            activeOrdersCount > 0 ? "$activeOrdersCount" : "0",
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 8,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                        onTap: () => Navigator.pushNamed(context, '/active_orders'),
+                      ),
+                      _heroQuickActionButton(
+                        icon: Icons.chat_bubble_rounded,
+                        label: "Chat Inbox",
+                        iconColor: sapphireBlue,
+                        badge: Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEF4444),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 1.5),
+                          ),
+                        ),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const InboxScreen(isCustomer: false)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ],
+        ),
+      ),
+    )
+        .animate(onPlay: (c) => c.repeat(period: const Duration(seconds: 5)))
+        .shimmer(duration: const Duration(seconds: 2), color: Colors.white.withValues(alpha: 0.10));
+  }
+
+  Widget _heroQuickActionButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    Color iconColor = sapphireBlue,
+    Widget? badge,
+  }) {
+    return Expanded(
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          splashColor: Colors.white.withValues(alpha: 0.25),
+          highlightColor: Colors.white.withValues(alpha: 0.15),
+          hoverColor: Colors.white.withValues(alpha: 0.10),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.12),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      alignment: Alignment.center,
+                      child: Icon(icon, color: iconColor, size: 19),
+                    ),
+                    if (badge != null)
+                      Positioned(
+                        top: -2,
+                        right: -2,
+                        child: badge,
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  label,
+                  maxLines: 1,
+                  textAlign: TextAlign.center,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
   }
 
-  // ================= DRAWER MENU =================
+  // ================= PROFESSIONAL DRAWER MENU =================
   Widget _buildDrawer() {
-    final drawerWidth = (MediaQuery.of(context).size.width * 0.72).clamp(255.0, 285.0);
+    final drawerWidth = (MediaQuery.of(context).size.width * 0.78).clamp(270.0, 310.0);
+    final topPadding = MediaQuery.of(context).padding.top;
+
     return Drawer(
       width: drawerWidth,
       backgroundColor: Colors.white,
-      child: ListView(
-        padding: EdgeInsets.zero,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.horizontal(right: Radius.circular(20)),
+      ),
+      child: Column(
         children: [
-          UserAccountsDrawerHeader(
+          // 1. Sapphire Blue Header with Rounded Bottom Corners
+          Container(
+            width: double.infinity,
+            padding: EdgeInsets.fromLTRB(16, topPadding + 14, 16, 18),
             decoration: const BoxDecoration(
-              color: sapphireBlue,
+              gradient: LinearGradient(
+                colors: [Color(0xFF1E3A8A), Color(0xFF1D4ED8), Color(0xFF2563EB)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
+              boxShadow: [
+                BoxShadow(
+                  color: Color(0x331D4ED8),
+                  blurRadius: 12,
+                  offset: Offset(0, 4),
+                ),
+              ],
             ),
-            accountName: Text(sellerName, style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
-            accountEmail: Text(sellerEmail, style: const TextStyle(fontSize: 13)),
-            currentAccountPicture: CircleAvatar(
-              backgroundColor: Colors.white,
-              child: Text(
-                sellerName.isNotEmpty ? sellerName[0].toUpperCase() : 'S',
-                style: const TextStyle(color: sapphireBlue, fontWeight: FontWeight.w900, fontSize: 22),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    CircleAvatar(
+                      radius: 22,
+                      backgroundColor: Colors.white,
+                      child: Text(
+                        sellerName.isNotEmpty ? sellerName[0].toUpperCase() : 'S',
+                        style: const TextStyle(
+                          color: sapphireBlue,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 18,
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 5.5,
+                            height: 5.5,
+                            decoration: BoxDecoration(
+                              color: isStoreActive ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            isStoreActive ? "Active Store" : "Suspended",
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  sellerName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  sellerEmail,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.78),
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // 2. Scrollable Menu Items
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              children: [
+                _drawerSectionTitle("MAIN MENU"),
+                _drawerTile(
+                  icon: Icons.dashboard_rounded,
+                  title: "Dashboard",
+                  onTap: () => Navigator.pop(context),
+                  isSelected: true,
+                ),
+                _drawerTile(
+                  icon: Icons.inventory_2_outlined,
+                  title: "My Products",
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.pushNamed(context, '/my_products');
+                  },
+                ),
+                _drawerTile(
+                  icon: Icons.add_circle_outline_rounded,
+                  title: "Add New Product",
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.pushNamed(context, '/add_product');
+                  },
+                ),
+                _drawerTile(
+                  icon: Icons.receipt_long_outlined,
+                  title: "Active Orders",
+                  badgeText: activeOrdersCount > 0 ? "$activeOrdersCount" : null,
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.pushNamed(context, '/active_orders');
+                  },
+                ),
+                _drawerTile(
+                  icon: Icons.history_rounded,
+                  title: "All Orders History",
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.pushNamed(context, '/seller_all_orders');
+                  },
+                ),
+
+                const SizedBox(height: 6),
+                _drawerSectionTitle("ANALYTICS & ENGAGEMENT"),
+                _drawerTile(
+                  icon: Icons.bar_chart_rounded,
+                  title: "Sales Analytics",
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.pushNamed(context, '/seller_analytics');
+                  },
+                ),
+                _drawerTile(
+                  icon: Icons.people_alt_outlined,
+                  title: "Total Customers",
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.pushNamed(context, '/total_customers');
+                  },
+                ),
+                _drawerTile(
+                  icon: Icons.rate_review_outlined,
+                  title: "Customer Reviews",
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.pushNamed(context, '/seller_reviews');
+                  },
+                ),
+                _drawerTile(
+                  icon: Icons.chat_bubble_outline_rounded,
+                  title: "Customer Chat",
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const InboxScreen(isCustomer: false)),
+                    );
+                  },
+                ),
+
+                const SizedBox(height: 6),
+                _drawerSectionTitle("SETTINGS"),
+                _drawerTile(
+                  icon: Icons.storefront_outlined,
+                  title: "Manage Store",
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.pushNamed(context, '/manage_store');
+                  },
+                ),
+              ],
+            ),
+          ),
+
+          // 3. Bottom Logout Tile with light red container
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+            child: InkWell(
+              onTap: () async {
+                await SessionService.clearSession();
+                if (mounted) Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
+              },
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEF2F2),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFFECACA)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEE2E2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      alignment: Alignment.center,
+                      child: const Icon(Icons.logout_rounded, color: Color(0xFFDC2626), size: 16),
+                    ),
+                    const SizedBox(width: 10),
+                    const Expanded(
+                      child: Text(
+                        "Logout Account",
+                        style: TextStyle(
+                          color: Color(0xFFDC2626),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                    const Icon(Icons.chevron_right_rounded, color: Color(0xFFF87171), size: 18),
+                  ],
+                ),
               ),
             ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.dashboard_rounded, color: sapphireBlue),
-            title: const Text("Dashboard", style: TextStyle(fontWeight: FontWeight.w700)),
-            onTap: () => Navigator.pop(context),
-          ),
-          ListTile(
-            leading: const Icon(Icons.inventory_2_outlined, color: sapphireBlue),
-            title: const Text("My Products", style: TextStyle(fontWeight: FontWeight.w700)),
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.pushNamed(context, '/my_products');
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.add_circle_outline_rounded, color: sapphireBlue),
-            title: const Text("Add New Product", style: TextStyle(fontWeight: FontWeight.w700)),
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.pushNamed(context, '/add_product');
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.local_mall_outlined, color: sapphireBlue),
-            title: const Text("Active Orders", style: TextStyle(fontWeight: FontWeight.w700)),
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.pushNamed(context, '/active_orders');
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.history_rounded, color: sapphireBlue),
-            title: const Text("All Orders History", style: TextStyle(fontWeight: FontWeight.w700)),
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.pushNamed(context, '/seller_all_orders');
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.bar_chart_rounded, color: sapphireBlue),
-            title: const Text("Sales Analytics", style: TextStyle(fontWeight: FontWeight.w700)),
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.pushNamed(context, '/seller_analytics');
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.people_outline_rounded, color: sapphireBlue),
-            title: const Text("Total Customers", style: TextStyle(fontWeight: FontWeight.w700)),
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.pushNamed(context, '/total_customers');
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.rate_review_outlined, color: sapphireBlue),
-            title: const Text("Customer Reviews & Replies", style: TextStyle(fontWeight: FontWeight.w700)),
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.pushNamed(context, '/seller_reviews');
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.forum_outlined, color: sapphireBlue),
-            title: const Text("Chat", style: TextStyle(fontWeight: FontWeight.w700)),
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const InboxScreen(isCustomer: false)),
-              );
-            },
-          ),
-          const Divider(),
-          ListTile(
-            leading: const Icon(Icons.settings_outlined, color: sapphireBlue),
-            title: const Text("Manage Store / Settings", style: TextStyle(fontWeight: FontWeight.w700)),
-            onTap: () {
-              Navigator.pop(context);
-              Navigator.pushNamed(context, '/manage_store');
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.logout_rounded, color: Colors.red),
-            title: const Text("Logout", style: TextStyle(color: Colors.red, fontWeight: FontWeight.w700)),
-            onTap: () async {
-              await SessionService.clearSession();
-              if (mounted) Navigator.pushNamedAndRemoveUntil(context, '/login', (route) => false);
-            },
           ),
         ],
       ),
     );
   }
 
-  // ================= 2. 4 METRICS GRID (RESPONSIVE & TINTED) =================
-  Widget _metricsGridScreenshotStyle(bool isWide) {
-    if (isWide) {
-      return Row(
-        children: [
-          Expanded(
-            child: _screenshotStyleCard(
-              title: "Today Revenue",
-              showRsBadge: true,
-              value: "Rs. ${_formattedAmount(todaysRevenue)}",
-              bgColor: const Color(0xFFF0F6FF),
-              borderColor: const Color(0xFFBFDBFE),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: _screenshotStyleCard(
-              title: "Active Orders",
-              showRsBadge: false,
-              value: "$activeOrdersCount",
-              bgColor: const Color(0xFFF0FDF4),
-              borderColor: const Color(0xFFA7F3D0),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: _screenshotStyleCard(
-              title: "Listed Products",
-              showRsBadge: false,
-              value: "$totalProducts",
-              bgColor: const Color(0xFFFFFBEB),
-              borderColor: const Color(0xFFFDE68A),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: _screenshotStyleCard(
-              title: "Total Customers",
-              showRsBadge: false,
-              value: "$totalCustomers",
-              bgColor: const Color(0xFFF5F3FF),
-              borderColor: const Color(0xFFDDD6FE),
-            ),
-          ),
-        ],
-      );
-    }
-
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: _screenshotStyleCard(
-                title: "Today Revenue",
-                showRsBadge: true,
-                value: "Rs. ${_formattedAmount(todaysRevenue)}",
-                bgColor: const Color(0xFFF0F6FF),
-                borderColor: const Color(0xFFBFDBFE),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _screenshotStyleCard(
-                title: "Active Orders",
-                showRsBadge: false,
-                value: "$activeOrdersCount",
-                bgColor: const Color(0xFFF0FDF4),
-                borderColor: const Color(0xFFA7F3D0),
-              ),
-            ),
-          ],
+  Widget _drawerSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 4),
+      child: Text(
+        title,
+        style: const TextStyle(
+          color: slateMuted,
+          fontSize: 10,
+          fontWeight: FontWeight.w800,
+          letterSpacing: 0.7,
         ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _screenshotStyleCard(
-                title: "Listed Products",
-                showRsBadge: false,
-                value: "$totalProducts",
-                bgColor: const Color(0xFFFFFBEB),
-                borderColor: const Color(0xFFFDE68A),
+      ),
+    );
+  }
+
+  Widget _drawerTile({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+    bool isSelected = false,
+    String? badgeText,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 3),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? sapphireBlue.withValues(alpha: 0.08) : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: isSelected ? sapphireBlue : const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                alignment: Alignment.center,
+                child: Icon(
+                  icon,
+                  color: isSelected ? Colors.white : slateDark,
+                  size: 16.5,
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _screenshotStyleCard(
-                title: "Total Customers",
-                showRsBadge: false,
-                value: "$totalCustomers",
-                bgColor: const Color(0xFFF5F3FF),
-                borderColor: const Color(0xFFDDD6FE),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    color: isSelected ? sapphireBlue : slateDark,
+                    fontSize: 13,
+                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                  ),
+                ),
               ),
-            ),
-          ],
+              if (badgeText != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  margin: const EdgeInsets.only(right: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    badgeText,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: isSelected ? sapphireBlue.withValues(alpha: 0.5) : const Color(0xFFCBD5E1),
+                size: 16,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ================= 2. 3 METRIC CARDS ROW (CLEAN BORDERED - REFERENCE STYLE) =================
+  Widget _metricsGridScreenshotStyle(bool isWide) {
+    final totalOrderCount = activeOrdersCount + recentOrders.length;
+    final orderPct = activeOrdersCount > 0
+        ? ((activeOrdersCount / (totalOrderCount + 1)) * 100).toStringAsFixed(0)
+        : '0';
+    final salePct = todaysRevenue > 0
+        ? ((todaysRevenue / (totalRevenue == 0 ? 1 : totalRevenue)) * 100).toStringAsFixed(0)
+        : '0';
+
+    return Row(
+      children: [
+        Expanded(
+          child: _cleanMetricCard(
+            title: "Total Orders",
+            value: "$totalOrderCount",
+            changeText: "+$orderPct%",
+            changePositive: true,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _cleanMetricCard(
+            title: "Total Sales",
+            value: "Rs.${_formattedAmount(totalRevenue)}",
+            changeText: "+$salePct%",
+            changePositive: true,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _cleanMetricCard(
+            title: "Products",
+            value: "$totalProducts",
+            changeText: "$totalCustomers buyers",
+            changePositive: true,
+          ),
         ),
       ],
     );
   }
 
-  Widget _screenshotStyleCard({
+  Widget _cleanMetricCard({
     required String title,
-    required bool showRsBadge,
     required String value,
-    required Color bgColor,
-    required Color borderColor,
+    required String changeText,
+    required bool changePositive,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
       decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: borderColor, width: 1.5),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: slateDark, fontSize: 13, fontWeight: FontWeight.w700),
-                ),
-              ),
-              if (showRsBadge)
-                Container(
-                  padding: const EdgeInsets.all(3.5),
-                  decoration: const BoxDecoration(
-                    color: sapphireBlue,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Text(
-                    "Rs",
-                    style: TextStyle(color: Colors.white, fontSize: 8.5, fontWeight: FontWeight.w900),
-                  ),
-                ),
-            ],
+          Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              color: slateMuted,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 6),
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
             child: Text(
               value,
-              style: const TextStyle(color: slateDark, fontSize: 21, fontWeight: FontWeight.w900, letterSpacing: -0.4),
+              style: const TextStyle(
+                color: slateDark,
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.5,
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            changeText,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: changePositive ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+              fontSize: 10.5,
+              fontWeight: FontWeight.w700,
             ),
           ),
         ],
@@ -835,13 +1298,13 @@ class _SellerHomeScreenState extends State<SellerHomeScreen> {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: cardBorderColor, width: 1.5),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.025),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
@@ -852,13 +1315,7 @@ class _SellerHomeScreenState extends State<SellerHomeScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const Row(
-                children: [
-                  Icon(Icons.show_chart_rounded, color: sapphireBlue, size: 20),
-                  SizedBox(width: 8),
-                  Text("Sales Line Trajectory", style: TextStyle(color: slateDark, fontSize: 15.5, fontWeight: FontWeight.w900)),
-                ],
-              ),
+              const Text("Sales Overview", style: TextStyle(color: slateDark, fontSize: 16, fontWeight: FontWeight.w800)),
               _buildGraphFilterDropdown(),
             ],
           ),
@@ -894,27 +1351,27 @@ class _SellerHomeScreenState extends State<SellerHomeScreen> {
     );
   }
 
-  // STYLISH DROPDOWN SELECTOR FOR GRAPH FILTER (ZERO OVERFLOW)
+  // CLEAN DROPDOWN SELECTOR FOR GRAPH FILTER
   Widget _buildGraphFilterDropdown() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
       decoration: BoxDecoration(
-        color: const Color(0xFFEFF6FF),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFBFDBFE)),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: selectedGraphFilter,
-          icon: const Icon(Icons.keyboard_arrow_down_rounded, color: sapphireBlue, size: 18),
-          style: const TextStyle(color: sapphireBlue, fontSize: 12, fontWeight: FontWeight.w800),
+          icon: const Icon(Icons.keyboard_arrow_down_rounded, color: slateDark, size: 18),
+          style: const TextStyle(color: slateDark, fontSize: 12, fontWeight: FontWeight.w600),
           isDense: true,
           dropdownColor: Colors.white,
           borderRadius: BorderRadius.circular(12),
           items: ['Weekly', 'Monthly', 'Yearly'].map((String filter) {
             return DropdownMenuItem<String>(
               value: filter,
-              child: Text(filter, style: const TextStyle(color: sapphireBlue, fontSize: 12, fontWeight: FontWeight.w800)),
+              child: Text(filter, style: const TextStyle(color: slateDark, fontSize: 12, fontWeight: FontWeight.w600)),
             );
           }).toList(),
           onChanged: (String? newValue) {
@@ -936,18 +1393,12 @@ class _SellerHomeScreenState extends State<SellerHomeScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             const Text(
-              "RECENT ORDERS",
-              style: TextStyle(color: slateMuted, fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: 0.8),
+              "Recent Orders",
+              style: TextStyle(color: slateDark, fontSize: 16, fontWeight: FontWeight.w800),
             ),
             InkWell(
               onTap: () => Navigator.pushNamed(context, '/seller_all_orders'),
-              child: const Row(
-                children: [
-                  Text("View All", style: TextStyle(color: sapphireBlue, fontSize: 12.5, fontWeight: FontWeight.w800)),
-                  SizedBox(width: 2),
-                  Icon(Icons.arrow_forward_rounded, color: sapphireBlue, size: 14),
-                ],
-              ),
+              child: const Text("View All", style: TextStyle(color: Color(0xFF10B981), fontSize: 13, fontWeight: FontWeight.w700)),
             ),
           ],
         ),
@@ -986,9 +1437,20 @@ class _SellerHomeScreenState extends State<SellerHomeScreen> {
   // ================= 5. RECENT ORDERS TICKER LIST =================
   Widget _recentOrdersList() {
     final filtered = recentOrders.where((o) {
-      if (selectedOrderFilter == 'All') return true;
-      final st = (o['status']?.toString() ?? 'Pending').toLowerCase();
-      return st == selectedOrderFilter.toLowerCase();
+      if (selectedOrderFilter != 'All') {
+        final st = (o['status']?.toString() ?? 'Pending').toLowerCase();
+        if (st != selectedOrderFilter.toLowerCase()) return false;
+      }
+      if (_searchQuery.isNotEmpty) {
+        final id = (o['id']?.toString() ?? '').toLowerCase();
+        final addr = (o['address']?.toString() ?? '').toLowerCase();
+        final status = (o['status']?.toString() ?? '').toLowerCase();
+        final matchId = id.contains(_searchQuery);
+        final matchAddr = addr.contains(_searchQuery);
+        final matchStatus = status.contains(_searchQuery);
+        if (!matchId && !matchAddr && !matchStatus) return false;
+      }
+      return true;
     }).toList();
 
     if (filtered.isEmpty) {
@@ -997,8 +1459,8 @@ class _SellerHomeScreenState extends State<SellerHomeScreen> {
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: cardBorderColor),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
         ),
         child: const Column(
           children: [
@@ -1041,26 +1503,26 @@ class _SellerHomeScreenState extends State<SellerHomeScreen> {
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: cardBorderColor),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.02),
-                blurRadius: 10,
-                offset: const Offset(0, 3),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
               ),
             ],
           ),
           child: Row(
             children: [
               Container(
-                height: 42,
-                width: 42,
+                height: 40,
+                width: 40,
                 decoration: BoxDecoration(
-                  color: sapphireLight,
-                  borderRadius: BorderRadius.circular(12),
+                  color: const Color(0xFFF1F5F9),
+                  shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.shopping_bag_outlined, color: sapphireBlue, size: 20),
+                child: const Icon(Icons.shopping_bag_outlined, color: slateDark, size: 18),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1081,12 +1543,12 @@ class _SellerHomeScreenState extends State<SellerHomeScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text("Rs. ${amount.toStringAsFixed(0)}", style: const TextStyle(color: slateDark, fontSize: 14, fontWeight: FontWeight.w900)),
+                  Text("Rs.${amount.toStringAsFixed(0)}", style: const TextStyle(color: slateDark, fontSize: 13.5, fontWeight: FontWeight.w800)),
                   const SizedBox(height: 4),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(color: statusBg, borderRadius: BorderRadius.circular(6)),
-                    child: Text(status.toUpperCase(), style: TextStyle(color: statusText, fontSize: 9.5, fontWeight: FontWeight.w900)),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                    decoration: BoxDecoration(color: statusBg, borderRadius: BorderRadius.circular(12)),
+                    child: Text(status, style: TextStyle(color: statusText, fontSize: 10, fontWeight: FontWeight.w700)),
                   ),
                 ],
               ),
@@ -1094,69 +1556,6 @@ class _SellerHomeScreenState extends State<SellerHomeScreen> {
           ),
         );
       }).toList(),
-    );
-  }
-
-  // ================= 5-TAB SELLER BOTTOM NAV BAR WITH ROUNDED TOP CORNERS =================
-  Widget _buildSellerBottomNav(int currentIndex) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
-        border: Border.all(color: cardBorderColor, width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 16,
-            offset: const Offset(0, -4),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
-        child: BottomNavigationBar(
-          currentIndex: currentIndex,
-          onTap: (index) {
-            if (index == 0) return;
-            if (index == 1) Navigator.pushNamed(context, '/active_orders');
-            if (index == 2) Navigator.pushNamed(context, '/my_products');
-            if (index == 3) Navigator.pushNamed(context, '/seller_analytics');
-            if (index == 4) Navigator.pushNamed(context, '/manage_store');
-          },
-          type: BottomNavigationBarType.fixed,
-          backgroundColor: Colors.white,
-          selectedItemColor: sapphireBlue,
-          unselectedItemColor: slateMuted,
-          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 11),
-          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 11),
-          elevation: 0,
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home_rounded),
-              label: "Home",
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.local_mall_outlined),
-              activeIcon: Icon(Icons.local_mall_rounded),
-              label: "Orders",
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.inventory_2_outlined),
-              activeIcon: Icon(Icons.inventory_2_rounded),
-              label: "Products",
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.bar_chart_rounded),
-              label: "Analytics",
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.settings_outlined),
-              activeIcon: Icon(Icons.settings_rounded),
-              label: "Settings",
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

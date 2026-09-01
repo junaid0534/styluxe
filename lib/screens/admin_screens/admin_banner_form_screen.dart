@@ -26,7 +26,7 @@ class _AdminBannerFormScreenState extends State<AdminBannerFormScreen> {
   bool _isSaving = false;
   bool _isDeleting = false;
 
-  static const Color primaryTeal = Color(0xFF0D9488);
+  static const Color primaryTeal = Color(0xFF10B981);
   static const Color slateDark = Color(0xFF0F172A);
   static const Color slateMuted = Color(0xFF64748B);
   static const Color bgLight = Color(0xFFF8FAFC);
@@ -229,6 +229,7 @@ class _AdminBannerFormScreenState extends State<AdminBannerFormScreen> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
+        toolbarHeight: 46.0,
         centerTitle: true,
         title: Text(
           "StyLuxe",

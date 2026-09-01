@@ -26,7 +26,8 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
   bool isSmsNotificationsEnabled = false;
   bool isAutoApproveSellers = false;
 
-  static const Color primaryTeal = Color(0xFF0D9488);
+  static const Color primaryTeal = Color(0xFF10B981);
+  static const Color primaryDark = Color(0xFF047857);
   static const Color slateDark = Color(0xFF0F172A);
   static const Color slateMuted = Color(0xFF64748B);
   static const Color slateLight = Color(0xFF94A3B8);
@@ -194,6 +195,7 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
       return Scaffold(
         backgroundColor: bgLight,
         appBar: AppBar(
+          toolbarHeight: 46.0,
           title: Text(
             "StyLuxe",
             style: GoogleFonts.poppins(fontWeight: FontWeight.w800, color: slateDark, fontSize: 16),
@@ -219,8 +221,12 @@ class _AdminSettingsScreenState extends State<AdminSettingsScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: primaryTeal,
-        borderRadius: BorderRadius.circular(14),
+        gradient: const LinearGradient(
+          colors: [primaryTeal, primaryDark],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
             color: primaryTeal.withValues(alpha: 0.25),

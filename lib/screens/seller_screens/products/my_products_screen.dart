@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'seller_product_detail_screen.dart';
+import '../../../widgets/seller_bottom_nav.dart';
 
 class MyProductsScreen extends StatefulWidget {
   const MyProductsScreen({super.key});
@@ -24,7 +25,7 @@ class _MyProductsScreenState extends State<MyProductsScreen> {
   static const Color sapphireLight = Color(0xFFEFF6FF);
   static const Color slateDark = Color(0xFF0F172A);
   static const Color slateMuted = Color(0xFF64748B);
-  static const Color cardBorderColor = Color(0xFF93C5FD);
+  static const Color cardBorderColor = Color(0xFFE2E8F0);
   static const Color bgColor = Colors.white;
 
   @override
@@ -234,17 +235,17 @@ class _MyProductsScreenState extends State<MyProductsScreen> {
                           builder: (context, constraints) {
                             final width = constraints.crossAxisExtent;
                             int crossAxisCount = 2;
-                            double childAspectRatio = 0.66;
+                            double childAspectRatio = 0.58;
 
                             if (width >= 1000) {
                               crossAxisCount = 4;
-                              childAspectRatio = 0.74;
+                              childAspectRatio = 0.68;
                             } else if (width >= 700) {
                               crossAxisCount = 3;
-                              childAspectRatio = 0.70;
+                              childAspectRatio = 0.64;
                             } else if (width < 360) {
                               crossAxisCount = 2;
-                              childAspectRatio = 0.60;
+                              childAspectRatio = 0.54;
                             }
 
                             return SliverPadding(
@@ -272,7 +273,7 @@ class _MyProductsScreenState extends State<MyProductsScreen> {
                 ),
               ),
             ),
-      bottomNavigationBar: _buildSellerBottomNav(2),
+      bottomNavigationBar: const SellerBottomNav(currentIndex: 2),
     );
   }
 
@@ -466,28 +467,31 @@ class _MyProductsScreenState extends State<MyProductsScreen> {
           Expanded(
             child: Stack(
               children: [
-                ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16.5)),
-                  child: SizedBox(
-                    width: double.infinity,
-                    height: double.infinity,
-                    child: (imageUrl != null && imageUrl.isNotEmpty)
-                        ? Image.network(
-                            imageUrl,
-                            fit: BoxFit.cover,
-                            alignment: Alignment.center,
-                            width: double.infinity,
-                            height: double.infinity,
-                            errorBuilder: (ctx, err, stack) => Container(
-                              color: const Color(0xFFF1F5F9),
-                              child: const Center(child: Icon(Icons.broken_image_rounded, color: slateMuted, size: 32)),
-                            ),
-                          )
-                        : Container(
-                            color: const Color(0xFFF1F5F9),
-                            child: const Center(child: Icon(Icons.inventory_2_outlined, color: slateMuted, size: 36)),
-                          ),
+                Container(
+                  width: double.infinity,
+                  height: double.infinity,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(16.5)),
                   ),
+                  clipBehavior: Clip.antiAlias,
+                  padding: const EdgeInsets.all(4),
+                  child: (imageUrl != null && imageUrl.isNotEmpty)
+                      ? Image.network(
+                          imageUrl,
+                          fit: BoxFit.contain,
+                          alignment: Alignment.center,
+                          width: double.infinity,
+                          height: double.infinity,
+                          errorBuilder: (ctx, err, stack) => Container(
+                            color: const Color(0xFFF1F5F9),
+                            child: const Center(child: Icon(Icons.broken_image_rounded, color: slateMuted, size: 32)),
+                          ),
+                        )
+                      : Container(
+                          color: const Color(0xFFF1F5F9),
+                          child: const Center(child: Icon(Icons.inventory_2_outlined, color: slateMuted, size: 36)),
+                        ),
                 ),
                 // Stock Status Badge
                 Positioned(
@@ -679,68 +683,6 @@ class _MyProductsScreenState extends State<MyProductsScreen> {
           const SizedBox(height: 4),
           const Text("Click '+ Add Product' to list new items in your store.", style: TextStyle(color: slateMuted, fontSize: 13)),
         ],
-      ),
-    );
-  }
-
-  // ================= 5-TAB SELLER BOTTOM NAV BAR =================
-  Widget _buildSellerBottomNav(int currentIndex) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
-        border: Border.all(color: cardBorderColor, width: 1.5),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 16,
-            offset: const Offset(0, -4),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
-        child: BottomNavigationBar(
-          currentIndex: currentIndex,
-          onTap: (index) {
-            if (index == 0) Navigator.pushReplacementNamed(context, '/seller');
-            if (index == 1) Navigator.pushNamed(context, '/active_orders');
-            if (index == 2) return;
-            if (index == 3) Navigator.pushNamed(context, '/seller_analytics');
-            if (index == 4) Navigator.pushNamed(context, '/manage_store');
-          },
-          type: BottomNavigationBarType.fixed,
-          backgroundColor: Colors.white,
-          selectedItemColor: sapphireBlue,
-          unselectedItemColor: slateMuted,
-          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 11),
-          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 11),
-          elevation: 0,
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home_rounded),
-              label: "Home",
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.local_mall_outlined),
-              activeIcon: Icon(Icons.local_mall_rounded),
-              label: "Orders",
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.inventory_2_rounded),
-              label: "Products",
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.bar_chart_rounded),
-              label: "Analytics",
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.settings_outlined),
-              activeIcon: Icon(Icons.settings_rounded),
-              label: "Settings",
-            ),
-          ],
-        ),
       ),
     );
   }

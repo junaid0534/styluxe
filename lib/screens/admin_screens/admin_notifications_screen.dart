@@ -24,7 +24,7 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
   bool _isLoadingHistory = true;
   List<BroadcastItem> _history = [];
 
-  static const Color primaryTeal = Color(0xFF0D9488);
+  static const Color primaryTeal = Color(0xFF10B981);
   static const Color slateDark = Color(0xFF0F172A);
   static const Color slateMuted = Color(0xFF64748B);
   static const Color bgLight = Color(0xFFF8FAFC);
@@ -34,7 +34,7 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
     'announcement': {
       'label': 'Announcement',
       'icon': Icons.campaign_rounded,
-      'color': const Color(0xFF0D9488),
+      'color': const Color(0xFF10B981),
       'bgColor': const Color(0xFFE6F4EA),
     },
     'offer': {
@@ -232,6 +232,7 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
         appBar: AppBar(
           backgroundColor: Colors.white,
           elevation: 0,
+          toolbarHeight: 46.0,
           centerTitle: true,
           title: Text(
             "StyLuxe",

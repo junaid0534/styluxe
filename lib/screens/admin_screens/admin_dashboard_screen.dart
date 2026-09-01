@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -23,6 +24,7 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
   bool isLoading = true;
   bool isInitialLoad = true;
   String? _fetchError;
+  DateTime? _lastBackPressTime;
 
   StreamSubscription? _ordersSub;
   StreamSubscription? _storesSub;
@@ -46,7 +48,8 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
   // Monthly Revenue Map for dynamic line chart
   Map<String, double> monthlyRevenueMap = {};
 
-  static const Color primaryTeal = Color(0xFF0D9488);
+  static const Color primaryEmerald = Color(0xFF10B981);
+  static const Color primaryDark = Color(0xFF047857);
   static const Color slateDark = Color(0xFF0F172A);
   static const Color slateMuted = Color(0xFF64748B);
   static const Color borderColor = Color(0xFFE2E8F0);
@@ -286,7 +289,7 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
         'icon': Icons.shopping_bag_rounded,
         'color': (o['status']?.toString().toLowerCase() == 'completed' || o['status']?.toString().toLowerCase() == 'delivered')
             ? const Color(0xFF10B981)
-            : primaryTeal,
+            : primaryEmerald,
       });
     }
 
@@ -295,7 +298,7 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
         'title': "${p['method'] ?? 'Payout'} request of Rs. ${(p['amount'] as num?)?.toStringAsFixed(0) ?? '0'} (${p['status'] ?? 'Pending'})",
         'time': _timeAgo(p['created_at']?.toString()),
         'icon': Icons.account_balance_wallet_rounded,
-        'color': (p['status']?.toString().toLowerCase() == 'completed') ? const Color(0xFF10B981) : primaryTeal,
+        'color': (p['status']?.toString().toLowerCase() == 'completed') ? const Color(0xFF10B981) : primaryEmerald,
       });
     }
     for (final s in fetchedSellers) {
@@ -303,7 +306,7 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
         'title': "Store '${s['store_name']}' registered (${s['status']})",
         'time': _timeAgo(s['created_at']?.toString()),
         'icon': Icons.storefront_rounded,
-        'color': primaryTeal,
+        'color': primaryEmerald,
       });
     }
 
@@ -379,41 +382,74 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: bgColor,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // 1. TOP WHITE APP BAR HEADER
-            _buildWhiteAdminHeader(),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
 
-            // 2. MAIN CONTENT BODY
-            Expanded(
-              child: isLoading
-                  ? const Center(child: CircularProgressIndicator(color: primaryTeal))
-                  : IndexedStack(
-                      index: _selectedTab,
-                      children: [
-                        _buildDashboardTab(),
-                        const AdminSellersScreen(isStandalone: false),
-                        _buildPayoutsTab(),
-                        const AdminAnalyticsScreen(isStandalone: false),
-                        const AdminSettingsScreen(isStandalone: false),
-                      ],
-                    ),
+        // If on secondary tab, return to Dashboard tab
+        if (_selectedTab != 0) {
+          setState(() => _selectedTab = 0);
+          return;
+        }
+
+        // Double press back to exit gracefully
+        final now = DateTime.now();
+        if (_lastBackPressTime == null || now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
+          _lastBackPressTime = now;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text(
+                "Press back again to exit StyLuxe Admin",
+                style: TextStyle(fontWeight: FontWeight.w600, color: Colors.white, fontSize: 13),
+              ),
+              duration: const Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+              backgroundColor: slateDark,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
-          ],
+          );
+        } else {
+          SystemNavigator.pop();
+        }
+      },
+      child: Scaffold(
+        backgroundColor: bgColor,
+        body: SafeArea(
+          child: Column(
+            children: [
+              // 1. TOP WHITE APP BAR HEADER
+              _buildWhiteAdminHeader(),
+
+              // 2. MAIN CONTENT BODY
+              Expanded(
+                child: isLoading
+                    ? const Center(child: CircularProgressIndicator(color: primaryEmerald))
+                    : IndexedStack(
+                        index: _selectedTab,
+                        children: [
+                          _buildDashboardTab(),
+                          const AdminSellersScreen(isStandalone: false),
+                          _buildPayoutsTab(),
+                          const AdminAnalyticsScreen(isStandalone: false),
+                          const AdminSettingsScreen(isStandalone: false),
+                        ],
+                      ),
+              ),
+            ],
+          ),
         ),
+        bottomNavigationBar: _buildAdminBottomNav(),
       ),
-      bottomNavigationBar: _buildAdminBottomNav(),
     );
   }
 
-  // ================= 1. TOP WHITE APP BAR HEADER =================
+  // ================= 1. TOP WHITE APP BAR HEADER (COMPACT 46PX) =================
   Widget _buildWhiteAdminHeader() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      height: 46.0,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(bottom: BorderSide(color: borderColor, width: 1)),
@@ -421,28 +457,72 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const SizedBox(width: 40),
-          const Text(
-            "StyLuxe",
-            style: TextStyle(
-              color: slateDark,
-              fontWeight: FontWeight.w900,
-              fontSize: 22,
-              letterSpacing: -0.5,
+          // Left Badge: Super Admin Pill
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+            decoration: BoxDecoration(
+              color: primaryEmerald.withValues(alpha: 0.10),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: primaryEmerald.withValues(alpha: 0.25)),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.shield_rounded, color: primaryEmerald, size: 12),
+                SizedBox(width: 4),
+                Text(
+                  "ADMIN",
+                  style: TextStyle(
+                    color: primaryEmerald,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.6,
+                  ),
+                ),
+              ],
             ),
           ),
+
+          // Center: StyLuxe Title
+          RichText(
+            text: const TextSpan(
+              children: [
+                TextSpan(
+                  text: "Sty",
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                    color: slateDark,
+                    letterSpacing: -0.4,
+                  ),
+                ),
+                TextSpan(
+                  text: "luxe",
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                    color: primaryEmerald,
+                    letterSpacing: -0.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Right: Broadcast Notification Icon
           Stack(
             clipBehavior: Clip.none,
             children: [
               Container(
-                width: 40,
-                height: 40,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFF1F5F9),
-                  shape: BoxShape.circle,
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: IconButton(
-                  icon: const Icon(Icons.notifications_outlined, color: slateDark, size: 20),
+                  padding: EdgeInsets.zero,
+                  icon: const Icon(Icons.campaign_outlined, color: slateDark, size: 18),
                   tooltip: "Broadcast Notifications",
                   onPressed: () {
                     Navigator.push(
@@ -456,19 +536,19 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
               ),
               if (pendingPayoutsCount > 0)
                 Positioned(
-                  right: 2,
-                  top: 2,
+                  right: -2,
+                  top: -2,
                   child: Container(
-                    padding: const EdgeInsets.all(4),
+                    padding: const EdgeInsets.all(3),
                     decoration: const BoxDecoration(
                       color: Color(0xFFEF4444),
                       shape: BoxShape.circle,
                     ),
-                    constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                    constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
                     child: Text(
                       "$pendingPayoutsCount",
                       textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.w900),
+                      style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w900),
                     ),
                   ),
                 ),
@@ -516,138 +596,58 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
                     ],
                   ),
                 ),
-
               const SizedBox(height: 12),
 
-              // Quick Action Shortcuts (Home Sliders & Broadcast Alerts)
-              Row(
+              // Quick Action Shortcuts (4 Compact Grid Items)
+              GridView.count(
+                crossAxisCount: 2,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                mainAxisSpacing: 10,
+                crossAxisSpacing: 10,
+                childAspectRatio: 2.3,
                 children: [
-                  Expanded(
-                    child: InkWell(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const AdminBannersScreen(isStandalone: true)),
-                        );
-                      },
-                      borderRadius: BorderRadius.circular(12),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: borderColor),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF0F172A).withValues(alpha: 0.02),
-                              blurRadius: 6,
-                              offset: const Offset(0, 1),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFEEF2FF),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Icon(Icons.view_carousel_rounded, color: Color(0xFF6366F1), size: 16),
-                            ),
-                            const SizedBox(width: 8),
-                            const Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "Home Sliders",
-                                    style: TextStyle(
-                                      color: slateDark,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                                  Text(
-                                    "Manage banners",
-                                    style: TextStyle(
-                                      color: slateMuted,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const Icon(Icons.arrow_forward_ios_rounded, color: slateMuted, size: 12),
-                          ],
-                        ),
-                      ),
-                    ),
+                  _quickActionTile(
+                    icon: Icons.view_carousel_rounded,
+                    title: "Home Sliders",
+                    subtitle: "Manage banners",
+                    iconColor: const Color(0xFF6366F1),
+                    bgColor: const Color(0xFFEEF2FF),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const AdminBannersScreen(isStandalone: true)),
+                      );
+                    },
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: InkWell(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const AdminNotificationsScreen(isStandalone: true)),
-                        );
-                      },
-                      borderRadius: BorderRadius.circular(12),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: borderColor),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF0F172A).withValues(alpha: 0.02),
-                              blurRadius: 6,
-                              offset: const Offset(0, 1),
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFE6F4EA),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Icon(Icons.campaign_rounded, color: primaryTeal, size: 16),
-                            ),
-                            const SizedBox(width: 8),
-                            const Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    "Broadcast Hub",
-                                    style: TextStyle(
-                                      color: slateDark,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w800,
-                                    ),
-                                  ),
-                                  Text(
-                                    "Push notifications",
-                                    style: TextStyle(
-                                      color: slateMuted,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const Icon(Icons.arrow_forward_ios_rounded, color: slateMuted, size: 12),
-                          ],
-                        ),
-                      ),
-                    ),
+                  _quickActionTile(
+                    icon: Icons.campaign_rounded,
+                    title: "Broadcast Hub",
+                    subtitle: "Push alerts",
+                    iconColor: primaryEmerald,
+                    bgColor: const Color(0xFFE6F4EA),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const AdminNotificationsScreen(isStandalone: true)),
+                      );
+                    },
+                  ),
+                  _quickActionTile(
+                    icon: Icons.storefront_rounded,
+                    title: "Seller Stores",
+                    subtitle: "$activeSellersCount active",
+                    iconColor: const Color(0xFF0284C7),
+                    bgColor: const Color(0xFFE0F2FE),
+                    onTap: () => setState(() => _selectedTab = 1),
+                  ),
+                  _quickActionTile(
+                    icon: Icons.tune_rounded,
+                    title: "Platform Rules",
+                    subtitle: "Commissions & mode",
+                    iconColor: const Color(0xFFF59E0B),
+                    bgColor: const Color(0xFFFEF3C7),
+                    onTap: () => setState(() => _selectedTab = 4),
                   ),
                 ],
               ).animate().fadeIn(delay: 100.ms, duration: 300.ms).slideY(begin: 0.04),
@@ -656,40 +656,46 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
 
               _revenueTrendChartCard(),
 
-              const SizedBox(height: 18),
+              const SizedBox(height: 14),
 
               Row(
                 children: [
                   Expanded(
                     child: _statusCountCard(
+                      icon: Icons.verified_rounded,
                       count: "$activeSellersCount",
                       title: "Active",
                       color: const Color(0xFF10B981),
                       bgTint: const Color(0xFFE6F4EA),
+                      onTap: () => setState(() => _selectedTab = 1),
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: _statusCountCard(
+                      icon: Icons.hourglass_top_rounded,
                       count: "$pendingSellersCount",
                       title: "Pending",
                       color: const Color(0xFFF59E0B),
                       bgTint: const Color(0xFFFEF7E0),
+                      onTap: () => setState(() => _selectedTab = 1),
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: _statusCountCard(
+                      icon: Icons.block_rounded,
                       count: "$suspendedSellersCount",
                       title: "Suspended",
                       color: const Color(0xFFEF4444),
                       bgTint: const Color(0xFFFCE8E6),
+                      onTap: () => setState(() => _selectedTab = 1),
                     ),
                   ),
                 ],
               ),
 
-              const SizedBox(height: 22),
+              const SizedBox(height: 18),
 
               _recentActivityCard(),
             ],
@@ -699,16 +705,92 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
     );
   }
 
+  Widget _quickActionTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color iconColor,
+    required Color bgColor,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: borderColor),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: bgColor,
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: Icon(icon, color: iconColor, size: 16),
+            ),
+            const SizedBox(width: 9),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: slateDark,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: slateMuted,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.arrow_forward_ios_rounded, color: slateMuted, size: 11),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _platformGmvHeroCard() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: primaryTeal,
-        borderRadius: BorderRadius.circular(22),
+        gradient: const LinearGradient(
+          colors: [primaryEmerald, primaryDark],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: primaryTeal.withValues(alpha: 0.35),
+            color: primaryEmerald.withValues(alpha: 0.35),
             blurRadius: 18,
             offset: const Offset(0, 6),
           ),
@@ -717,55 +799,69 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            "PLATFORM GMV",
-            style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 0.6),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            "Rs. ${totalPlatformGMV.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}",
-            style: const TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.w900, letterSpacing: -0.6),
-          ),
-          const SizedBox(height: 4),
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Icon(
-                monthlyGrowthPct >= 0 ? Icons.north_east_rounded : Icons.south_east_rounded,
-                color: monthlyGrowthPct >= 0 ? const Color(0xFF6EE7B7) : const Color(0xFFFCA5A5),
-                size: 14,
+              const Row(
+                children: [
+                  Icon(Icons.auto_awesome_rounded, color: Colors.white70, size: 13),
+                  SizedBox(width: 5),
+                  Text(
+                    "PLATFORM REVENUE & GMV",
+                    style: TextStyle(color: Colors.white70, fontSize: 10.5, fontWeight: FontWeight.w900, letterSpacing: 0.8),
+                  ),
+                ],
               ),
-              const SizedBox(width: 4),
-              Text(
-                "${monthlyGrowthPct >= 0 ? '+' : ''}${monthlyGrowthPct.toStringAsFixed(1)}% vs last month",
-                style: TextStyle(
-                  color: monthlyGrowthPct >= 0 ? const Color(0xFF6EE7B7) : const Color(0xFFFCA5A5),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w800,
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.20),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      monthlyGrowthPct >= 0 ? Icons.north_east_rounded : Icons.south_east_rounded,
+                      color: Colors.white,
+                      size: 11,
+                    ),
+                    const SizedBox(width: 3),
+                    Text(
+                      "${monthlyGrowthPct >= 0 ? '+' : ''}${monthlyGrowthPct.toStringAsFixed(1)}%",
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 18),
-          const Divider(height: 1, color: Colors.white24),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _gmvSubMetric(count: "$totalOrdersCount", label: "Orders"),
-              ),
-              Container(width: 1, height: 32, color: Colors.white24),
-              Expanded(
-                child: _gmvSubMetric(count: "$totalSellersCount", label: "Sellers"),
-              ),
-              Container(width: 1, height: 32, color: Colors.white24),
-              Expanded(
-                child: _gmvSubMetric(count: "$activeSellersCount", label: "Active"),
-              ),
-              Container(width: 1, height: 32, color: Colors.white24),
-              Expanded(
-                child: _gmvSubMetric(count: "$pendingPayoutsCount", label: "Payouts"),
-              ),
-            ],
+          const SizedBox(height: 8),
+          Text(
+            "Rs. ${totalPlatformGMV.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}",
+            style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w900, letterSpacing: -0.6),
+          ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Expanded(child: _gmvSubMetric(count: "$totalOrdersCount", label: "Orders")),
+                Container(width: 1, height: 26, color: Colors.white24),
+                Expanded(child: _gmvSubMetric(count: "$totalSellersCount", label: "Sellers")),
+                Container(width: 1, height: 26, color: Colors.white24),
+                Expanded(child: _gmvSubMetric(count: "$activeSellersCount", label: "Active")),
+                Container(width: 1, height: 26, color: Colors.white24),
+                Expanded(child: _gmvSubMetric(count: "$pendingPayoutsCount", label: "Payouts")),
+              ],
+            ),
           ),
         ],
       ),
@@ -775,9 +871,9 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
   Widget _gmvSubMetric({required String count, required String label}) {
     return Column(
       children: [
-        Text(count, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900)),
-        const SizedBox(height: 2),
-        Text(label, style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w600)),
+        Text(count, style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w900)),
+        const SizedBox(height: 1),
+        Text(label, style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.w600)),
       ],
     );
   }
@@ -789,7 +885,6 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
     for (int i = 0; i < months.length; i++) {
       final mName = months[i];
       final valPkr = monthlyRevenueMap[mName] ?? 0.0;
-      // Convert to thousands ('k') for chart plotting
       spots.add(FlSpot(i.toDouble(), valPkr > 0 ? valPkr / 1000 : 0));
     }
 
@@ -798,13 +893,13 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: borderColor),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 12, offset: const Offset(0, 3)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 3)),
         ],
       ),
       child: Column(
@@ -816,33 +911,33 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
               const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text("Revenue Trend", style: TextStyle(color: slateDark, fontSize: 16, fontWeight: FontWeight.w900)),
+                  Text("Platform Revenue Trend", style: TextStyle(color: slateDark, fontSize: 14.5, fontWeight: FontWeight.w900)),
                   SizedBox(height: 2),
-                  Text("Realtime Supabase Sales Curve", style: TextStyle(color: slateMuted, fontSize: 11.5, fontWeight: FontWeight.w600)),
+                  Text("Realtime monthly sales curve (PKR 'k')", style: TextStyle(color: slateMuted, fontSize: 11, fontWeight: FontWeight.w500)),
                 ],
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFCCFBF1),
-                  borderRadius: BorderRadius.circular(16),
+                  color: primaryEmerald.withValues(alpha: 0.10),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.north_east_rounded, color: primaryTeal, size: 13),
+                    const Icon(Icons.show_chart_rounded, color: primaryEmerald, size: 13),
                     const SizedBox(width: 4),
                     Text(
                       "${monthlyGrowthPct >= 0 ? '+' : ''}${monthlyGrowthPct.toStringAsFixed(1)}%",
-                      style: const TextStyle(color: primaryTeal, fontSize: 11.5, fontWeight: FontWeight.w900),
+                      style: const TextStyle(color: primaryEmerald, fontSize: 11, fontWeight: FontWeight.w900),
                     ),
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 14),
           SizedBox(
-            height: 180,
+            height: 160,
             child: LineChart(
               LineChartData(
                 minY: 0,
@@ -860,12 +955,12 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
                   leftTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
-                      reservedSize: 38,
+                      reservedSize: 34,
                       getTitlesWidget: (val, meta) {
-                        if (val == 0) return const Text("0", style: TextStyle(color: slateMuted, fontSize: 10));
+                        if (val == 0) return const Text("0", style: TextStyle(color: slateMuted, fontSize: 9.5));
                         return Text(
                           "${val.toStringAsFixed(val < 10 ? 1 : 0)}k",
-                          style: const TextStyle(color: slateMuted, fontSize: 10, fontWeight: FontWeight.w700),
+                          style: const TextStyle(color: slateMuted, fontSize: 9.5, fontWeight: FontWeight.w700),
                         );
                       },
                     ),
@@ -873,11 +968,11 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
                   bottomTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
-                      reservedSize: 24,
+                      reservedSize: 22,
                       getTitlesWidget: (val, meta) {
                         final idx = val.toInt();
                         if (idx >= 0 && idx < months.length) {
-                          return Text(months[idx], style: const TextStyle(color: slateMuted, fontSize: 10, fontWeight: FontWeight.w700));
+                          return Text(months[idx], style: const TextStyle(color: slateMuted, fontSize: 9.5, fontWeight: FontWeight.w600));
                         }
                         return const SizedBox.shrink();
                       },
@@ -888,20 +983,29 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
                   LineChartBarData(
                     spots: spots,
                     isCurved: true,
-                    barWidth: 3.5,
-                    color: primaryTeal,
+                    curveSmoothness: 0.35,
+                    barWidth: 3.0,
+                    color: primaryEmerald,
                     belowBarData: BarAreaData(
                       show: true,
                       gradient: LinearGradient(
                         colors: [
-                          primaryTeal.withValues(alpha: 0.2),
-                          primaryTeal.withValues(alpha: 0.0),
+                          primaryEmerald.withValues(alpha: 0.22),
+                          primaryEmerald.withValues(alpha: 0.0),
                         ],
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                       ),
                     ),
-                    dotData: const FlDotData(show: true),
+                    dotData: FlDotData(
+                      show: true,
+                      getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
+                        radius: 3,
+                        color: Colors.white,
+                        strokeWidth: 2,
+                        strokeColor: primaryEmerald,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -913,39 +1017,48 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
   }
 
   Widget _statusCountCard({
+    required IconData icon,
     required String count,
     required String title,
     required Color color,
     required Color bgTint,
+    required VoidCallback onTap,
   }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      decoration: BoxDecoration(
-        color: bgTint,
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Column(
-        children: [
-          Text(
-            count,
-            style: TextStyle(color: color, fontSize: 24, fontWeight: FontWeight.w900),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            title,
-            style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w800),
-          ),
-        ],
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+        decoration: BoxDecoration(
+          color: bgTint,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 18),
+            const SizedBox(height: 4),
+            Text(
+              count,
+              style: TextStyle(color: color, fontSize: 20, fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              title,
+              style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w800),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _recentActivityCard() {
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: borderColor),
         boxShadow: [
           BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 3)),
@@ -957,35 +1070,73 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text("Recent Activity", style: TextStyle(color: slateDark, fontSize: 16, fontWeight: FontWeight.w900)),
+              const Row(
+                children: [
+                  Icon(Icons.history_rounded, color: primaryEmerald, size: 18),
+                  SizedBox(width: 6),
+                  Text("Recent Platform Activity", style: TextStyle(color: slateDark, fontSize: 14.5, fontWeight: FontWeight.w900)),
+                ],
+              ),
               IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
                 icon: const Icon(Icons.refresh_rounded, color: slateMuted, size: 18),
                 onPressed: _fetchRealtimeAdminData,
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           if (recentActivities.isEmpty)
             const Padding(
-              padding: EdgeInsets.symmetric(vertical: 12),
+              padding: EdgeInsets.symmetric(vertical: 20),
               child: Center(
-                child: Text("No Recent Platform Activity", style: TextStyle(color: slateMuted, fontSize: 12.5, fontWeight: FontWeight.w600)),
+                child: Text("No recent platform activity logged", style: TextStyle(color: slateMuted, fontSize: 12)),
               ),
             )
           else
             ListView.separated(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: recentActivities.length,
-              separatorBuilder: (ctx, idx) => const Divider(height: 16, color: Color(0xFFF1F5F9)),
+              itemCount: recentActivities.length > 5 ? 5 : recentActivities.length,
+              separatorBuilder: (ctx, idx) => const Divider(height: 1, color: Color(0xFFF1F5F9)),
               itemBuilder: (ctx, index) {
-                final item = recentActivities[index];
-                return _activityItem(
-                  icon: item['icon'] as IconData,
-                  iconColor: item['color'] as Color,
-                  bgColor: (item['color'] as Color).withValues(alpha: 0.12),
-                  title: item['title'].toString(),
-                  time: item['time'].toString(),
+                final act = recentActivities[index];
+                final title = act['title']?.toString() ?? 'Activity';
+                final subtitle = act['subtitle']?.toString() ?? '';
+                final time = act['time']?.toString() ?? '';
+                final isOrder = act['is_order'] == true;
+
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          color: isOrder ? primaryEmerald.withValues(alpha: 0.10) : const Color(0xFFEFF6FF),
+                          borderRadius: BorderRadius.circular(9),
+                        ),
+                        child: Icon(
+                          isOrder ? Icons.shopping_bag_outlined : Icons.store_outlined,
+                          color: isOrder ? primaryEmerald : const Color(0xFF3B82F6),
+                          size: 16,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(title, style: const TextStyle(color: slateDark, fontSize: 12.5, fontWeight: FontWeight.w800)),
+                            if (subtitle.isNotEmpty)
+                              Text(subtitle, style: const TextStyle(color: slateMuted, fontSize: 11)),
+                          ],
+                        ),
+                      ),
+                      Text(time, style: const TextStyle(color: slateMuted, fontSize: 10, fontWeight: FontWeight.w600)),
+                    ],
+                  ),
                 );
               },
             ),
@@ -994,50 +1145,11 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
     );
   }
 
-  Widget _activityItem({
-    required IconData icon,
-    required Color iconColor,
-    required Color bgColor,
-    required String title,
-    required String time,
-  }) {
-    return Row(
-      children: [
-        Container(
-          width: 38,
-          height: 38,
-          decoration: BoxDecoration(
-            color: bgColor,
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, color: iconColor, size: 18),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(color: slateDark, fontSize: 13, fontWeight: FontWeight.w800),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                time,
-                style: const TextStyle(color: slateMuted, fontSize: 11, fontWeight: FontWeight.w500),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
   // ================= TAB 2: PAYOUTS TAB =================
   Widget _buildPayoutsTab() {
     return RefreshIndicator(
       onRefresh: () => _fetchRealtimeAdminData(showSpinner: false),
-      color: primaryTeal,
+      color: primaryEmerald,
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
         padding: const EdgeInsets.all(16),
@@ -1050,20 +1162,30 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text("Payout Requests Management", style: TextStyle(color: slateDark, fontSize: 17, fontWeight: FontWeight.w900)),
+                    const Text("Payout Requests Management", style: TextStyle(color: slateDark, fontSize: 16, fontWeight: FontWeight.w900)),
                     IconButton(
-                      icon: const Icon(Icons.refresh_rounded, color: slateMuted, size: 20),
+                      icon: const Icon(Icons.refresh_rounded, color: slateMuted, size: 18),
                       onPressed: () => _fetchRealtimeAdminData(showSpinner: false),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
                 if (payoutRequestsList.isEmpty)
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(24),
+                    padding: const EdgeInsets.all(28),
                     decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: borderColor)),
-                    child: const Center(child: Text("No Payout Requests Pending", style: TextStyle(color: slateMuted, fontSize: 13, fontWeight: FontWeight.w700))),
+                    child: const Center(
+                      child: Column(
+                        children: [
+                          Icon(Icons.check_circle_outline_rounded, color: primaryEmerald, size: 36),
+                          SizedBox(height: 8),
+                          Text("No Pending Payout Requests", style: TextStyle(color: slateDark, fontSize: 14, fontWeight: FontWeight.w800)),
+                          SizedBox(height: 2),
+                          Text("All seller withdrawal claims are up to date", style: TextStyle(color: slateMuted, fontSize: 11.5)),
+                        ],
+                      ),
+                    ),
                   )
                 else
                   ListView.separated(
@@ -1081,29 +1203,46 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
                       final st = p['status']?.toString() ?? 'Pending';
 
                       return Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(18), border: Border.all(color: borderColor)),
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: borderColor),
+                          boxShadow: [
+                            BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 6, offset: const Offset(0, 2)),
+                          ],
+                        ),
                         child: Column(
                           children: [
                             Row(
                               children: [
+                                Container(
+                                  width: 38,
+                                  height: 38,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFEFF6FF),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: const Icon(Icons.account_balance_wallet_rounded, color: Color(0xFF3B82F6), size: 20),
+                                ),
+                                const SizedBox(width: 10),
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Text("$method • $title", style: const TextStyle(color: slateDark, fontSize: 14, fontWeight: FontWeight.w900)),
+                                      Text("$method • $title", style: const TextStyle(color: slateDark, fontSize: 13.5, fontWeight: FontWeight.w900)),
                                       const SizedBox(height: 2),
-                                      Text("Account: $numStr", style: const TextStyle(color: slateMuted, fontSize: 12)),
+                                      Text("A/C: $numStr", style: const TextStyle(color: slateMuted, fontSize: 11.5)),
                                     ],
                                   ),
                                 ),
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.end,
                                   children: [
-                                    Text("Rs. ${amt.toStringAsFixed(0)}", style: const TextStyle(color: slateDark, fontSize: 15, fontWeight: FontWeight.w900)),
-                                    const SizedBox(height: 4),
+                                    Text("Rs. ${amt.toStringAsFixed(0)}", style: const TextStyle(color: slateDark, fontSize: 14.5, fontWeight: FontWeight.w900)),
+                                    const SizedBox(height: 3),
                                     Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
                                       decoration: BoxDecoration(
                                         color: st.toLowerCase() == 'completed' ? const Color(0xFFE6F4EA) : const Color(0xFFFEF7E0),
                                         borderRadius: BorderRadius.circular(6),
@@ -1112,7 +1251,7 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
                                         st.toUpperCase(),
                                         style: TextStyle(
                                           color: st.toLowerCase() == 'completed' ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
-                                          fontSize: 9.5,
+                                          fontSize: 9,
                                           fontWeight: FontWeight.w900,
                                         ),
                                       ),
@@ -1122,22 +1261,35 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
                               ],
                             ),
                             if (st.toLowerCase() == 'pending' && pId.isNotEmpty) ...[
-                              const SizedBox(height: 12),
+                              const SizedBox(height: 10),
                               Row(
                                 children: [
                                   Expanded(
-                                    child: ElevatedButton(
-                                      style: ElevatedButton.styleFrom(backgroundColor: primaryTeal, elevation: 0),
-                                      onPressed: () => _updatePayoutStatus(pId, 'Completed'),
-                                      child: const Text("APPROVE PAYOUT", style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 11.5)),
+                                    child: SizedBox(
+                                      height: 34,
+                                      child: ElevatedButton(
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: primaryEmerald,
+                                          elevation: 0,
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                        ),
+                                        onPressed: () => _updatePayoutStatus(pId, 'Completed'),
+                                        child: const Text("APPROVE", style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 11)),
+                                      ),
                                     ),
                                   ),
                                   const SizedBox(width: 8),
                                   Expanded(
-                                    child: ElevatedButton(
-                                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFEF4444), elevation: 0),
-                                      onPressed: () => _updatePayoutStatus(pId, 'Rejected'),
-                                      child: const Text("REJECT", style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 11.5)),
+                                    child: SizedBox(
+                                      height: 34,
+                                      child: OutlinedButton(
+                                        style: OutlinedButton.styleFrom(
+                                          side: const BorderSide(color: Color(0xFFEF4444)),
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                        ),
+                                        onPressed: () => _updatePayoutStatus(pId, 'Rejected'),
+                                        child: const Text("REJECT", style: TextStyle(color: Color(0xFFEF4444), fontWeight: FontWeight.w900, fontSize: 11)),
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -1156,79 +1308,90 @@ class _SuperAdminDashboardScreenState extends State<SuperAdminDashboardScreen> {
     );
   }
 
-
-
-
-
-  // ================= 5-TAB BOTTOM NAVIGATION BAR =================
+  // ================= 5-TAB COMPACT BOTTOM NAVIGATION BAR =================
   Widget _buildAdminBottomNav() {
     return Container(
-      decoration: BoxDecoration(
+      height: 50,
+      decoration: const BoxDecoration(
         color: Colors.white,
-        border: Border(top: BorderSide(color: borderColor)),
+        border: Border(top: BorderSide(color: borderColor, width: 1)),
       ),
-      child: BottomNavigationBar(
-        currentIndex: _selectedTab,
-        onTap: (idx) => setState(() => _selectedTab = idx),
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: Colors.white,
-        selectedItemColor: primaryTeal,
-        unselectedItemColor: slateMuted,
-        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w900, fontSize: 11),
-        unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 11),
-        elevation: 0,
-        items: [
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.grid_view_rounded),
-            label: "Dashboard",
-          ),
-          BottomNavigationBarItem(
-            icon: Stack(
+      child: SafeArea(
+        top: false,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _adminNavItem(icon: Icons.grid_view_rounded, label: "Dashboard", index: 0),
+            _adminNavItem(icon: Icons.storefront_rounded, label: "Sellers", index: 1, badgeCount: pendingSellersCount),
+            _adminNavItem(icon: Icons.account_balance_wallet_rounded, label: "Payouts", index: 2, badgeCount: pendingPayoutsCount),
+            _adminNavItem(icon: Icons.bar_chart_rounded, label: "Analytics", index: 3),
+            _adminNavItem(icon: Icons.settings_rounded, label: "Settings", index: 4),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _adminNavItem({
+    required IconData icon,
+    required String label,
+    required int index,
+    int badgeCount = 0,
+  }) {
+    final bool isSelected = _selectedTab == index;
+
+    return GestureDetector(
+      onTap: () => setState(() => _selectedTab = index),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: isSelected ? primaryEmerald.withValues(alpha: 0.12) : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          children: [
+            Stack(
               clipBehavior: Clip.none,
               children: [
-                const Icon(Icons.storefront_rounded),
-                if (pendingSellersCount > 0)
+                Icon(
+                  icon,
+                  size: 20,
+                  color: isSelected ? primaryEmerald : slateMuted,
+                ),
+                if (badgeCount > 0)
                   Positioned(
-                    right: -4,
+                    right: -3,
                     top: -2,
-                    child: CircleAvatar(
-                      radius: 6,
-                      backgroundColor: const Color(0xFFEF4444),
-                      child: Text("$pendingSellersCount", style: const TextStyle(color: Colors.white, fontSize: 7.5, fontWeight: FontWeight.w900)),
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFEF4444),
+                        shape: BoxShape.circle,
+                      ),
+                      constraints: const BoxConstraints(minWidth: 10, minHeight: 10),
+                      child: Text(
+                        "$badgeCount",
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.white, fontSize: 7, fontWeight: FontWeight.w900),
+                      ),
                     ),
                   ),
               ],
             ),
-            label: "Sellers",
-          ),
-          BottomNavigationBarItem(
-            icon: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                const Icon(Icons.account_balance_wallet_rounded),
-                if (pendingPayoutsCount > 0)
-                  Positioned(
-                    right: -4,
-                    top: -2,
-                    child: CircleAvatar(
-                      radius: 6,
-                      backgroundColor: const Color(0xFFEF4444),
-                      child: Text("$pendingPayoutsCount", style: const TextStyle(color: Colors.white, fontSize: 7.5, fontWeight: FontWeight.w900)),
-                    ),
-                  ),
-              ],
-            ),
-            label: "Payouts",
-          ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.bar_chart_rounded),
-            label: "Analytics",
-          ),
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.settings_rounded),
-            label: "Settings",
-          ),
-        ],
+            if (isSelected) ...[
+              const SizedBox(width: 5),
+              Text(
+                label,
+                style: const TextStyle(
+                  color: primaryEmerald,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

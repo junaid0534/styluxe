@@ -53,7 +53,7 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
   int? touchedPieIndex;
   int? touchedBarGroupIndex;
 
-  static const Color primaryTeal = Color(0xFF0D9488);
+  static const Color primaryTeal = Color(0xFF10B981);
   static const Color slateDark = Color(0xFF0F172A);
   static const Color slateMuted = Color(0xFF64748B);
   static const Color borderColor = Color(0xFFE2E8F0);
@@ -373,6 +373,7 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
       return Scaffold(
         backgroundColor: bgLight,
         appBar: AppBar(
+          toolbarHeight: 46.0,
           title: Text(
             "StyLuxe",
             style: GoogleFonts.poppins(fontWeight: FontWeight.w800, color: slateDark, fontSize: 16),
@@ -549,7 +550,7 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: borderColor),
         boxShadow: [
           BoxShadow(
@@ -560,38 +561,36 @@ class _AdminAnalyticsScreenState extends State<AdminAnalyticsScreen> {
         ],
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(color: bgColor, shape: BoxShape.circle),
-                alignment: Alignment.center,
-                child: Icon(icon, color: color, size: 14),
-              ),
-              const Icon(Icons.trending_up_rounded, color: Color(0xFF10B981), size: 14),
-            ],
+          Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(color: bgColor, shape: BoxShape.circle),
+            alignment: Alignment.center,
+            child: Icon(icon, color: color, size: 14),
           ),
           const SizedBox(height: 6),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: GoogleFonts.poppins(
-              color: slateDark,
-              fontSize: 14.5,
-              fontWeight: FontWeight.w800,
-              height: 1.1,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.center,
+            child: Text(
+              value,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(
+                color: slateDark,
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                height: 1.1,
+              ),
             ),
           ),
           const SizedBox(height: 2),
           Text(
             title,
             maxLines: 1,
+            textAlign: TextAlign.center,
             overflow: TextOverflow.ellipsis,
             style: GoogleFonts.poppins(
               color: slateMuted,

@@ -378,9 +378,10 @@ class _AdminSellersScreenState extends State<AdminSellersScreen> {
       return Scaffold(
         backgroundColor: AppColors.bgLight,
         appBar: AppBar(
+          toolbarHeight: 46.0,
           title: Text(
             "StyLuxe",
-            style: GoogleFonts.poppins(fontWeight: FontWeight.w800, color: AppColors.slateDark, fontSize: 20),
+            style: GoogleFonts.poppins(fontWeight: FontWeight.w800, color: AppColors.slateDark, fontSize: 18),
           ),
           centerTitle: true,
           backgroundColor: Colors.white,
@@ -397,17 +398,21 @@ class _AdminSellersScreenState extends State<AdminSellersScreen> {
     return bodyContent;
   }
 
-  // ================= 1-ROW METRICS STATS (SAME HERO CARD COLOR: Color(0xFF0D9488)) =================
+  // ================= 1-ROW METRICS STATS (EMERALD GRADIENT) =================
   Widget _buildMetricsStatsRow() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFF0D9488), // Same single solid color as Dashboard Hero Card
+        gradient: const LinearGradient(
+          colors: [AppColors.primary, AppColors.primaryDark],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF0D9488).withValues(alpha: 0.3),
+            color: AppColors.primary.withValues(alpha: 0.3),
             blurRadius: 16,
             offset: const Offset(0, 6),
           ),
