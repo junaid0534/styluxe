@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../theme/app_theme.dart';
+import '../../../widgets/seller_shimmer_loading.dart';
+import '../../../widgets/customer_shimmer_loading.dart';
 import '../../../services/chat_service.dart';
 import '../../chat/chat_room_screen.dart';
 
@@ -575,7 +577,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       ),
       clipBehavior: Clip.antiAlias,
       child: isLoadingImages
-          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+          ? const ShimmerBox(width: double.infinity, height: double.infinity, borderRadius: 0)
           : productImages.isEmpty
               ? _imagePlaceholder()
               : Stack(
@@ -1779,7 +1781,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
           // Reviews List
           if (isLoadingReviews)
-            const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator(color: AppColors.primary)))
+            Column(
+              children: List.generate(2, (_) => const Padding(
+                padding: EdgeInsets.only(bottom: 8),
+                child: ShimmerBox(width: double.infinity, height: 64, borderRadius: 12),
+              )),
+            )
           else if (productReviews.isEmpty)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 12),

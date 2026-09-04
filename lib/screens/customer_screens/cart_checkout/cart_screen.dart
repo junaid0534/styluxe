@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../theme/app_theme.dart';
+import '../../../widgets/customer_shimmer_loading.dart';
 import '../product/product_detail_screen.dart';
 
 class CartScreen extends StatefulWidget {
@@ -1110,9 +1111,7 @@ class _CartScreenState extends State<CartScreen> {
         ],
       ),
       body: isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: AppColors.primary),
-            )
+          ? const CustomerListItemsShimmer(count: 4)
           : cartItems.isEmpty
               ? _emptyCartView()
               : Column(

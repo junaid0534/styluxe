@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../theme/app_theme.dart';
+import '../../../widgets/customer_shimmer_loading.dart';
 import '../orders/order_detail_screen.dart';
 
 class NotificationsScreen extends StatefulWidget {
@@ -346,9 +347,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 // ================= BODY CONTENT =================
                 Expanded(
                   child: isLoading
-                      ? const Center(
-                          child: CircularProgressIndicator(color: AppColors.primary),
-                        )
+                      ? const CustomerNotificationsShimmer(count: 5)
                       : displayList.isEmpty
                           ? _emptyNotificationsView()
                           : RefreshIndicator(

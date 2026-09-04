@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../theme/app_theme.dart';
 import '../../../services/banner_service.dart';
 import '../../../services/session_service.dart';
+import '../../../widgets/customer_shimmer_loading.dart';
 import '../../chat/inbox_screen.dart';
 import '../product/product_detail_screen.dart';
 
@@ -427,12 +428,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
             // ================= PRODUCT GRID =================
             if (isLoadingProducts)
               const SliverToBoxAdapter(
-                child: Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(40.0),
-                    child: CircularProgressIndicator(color: AppColors.primary),
-                  ),
-                ),
+                child: CustomerProductsGridShimmer(itemCount: 6),
               )
             else if (filteredProducts.isEmpty)
               SliverToBoxAdapter(

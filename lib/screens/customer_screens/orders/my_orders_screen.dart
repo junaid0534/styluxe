@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../services/inventory_service.dart';
 import '../../../theme/app_theme.dart';
+import '../../../widgets/customer_shimmer_loading.dart';
 import 'order_detail_screen.dart';
 import 'order_tracking_screen.dart';
 import 'order_invoice_bill_screen.dart';
@@ -229,11 +230,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
         ],
       ),
       body: isLoading
-          ? const Center(
-              child: CircularProgressIndicator(
-                color: AppColors.primary,
-              ),
-            )
+          ? const CustomerOrdersShimmer(count: 3)
           : Align(
               alignment: Alignment.topCenter,
               child: ConstrainedBox(

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../theme/app_theme.dart';
+import '../../../widgets/customer_shimmer_loading.dart';
 
 class WishlistScreen extends StatefulWidget {
   const WishlistScreen({super.key});
@@ -366,11 +367,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
       ),
 
       body: isLoading
-          ? const Center(
-              child: CircularProgressIndicator(
-                color: AppColors.primary,
-              ),
-            )
+          ? const CustomerListItemsShimmer(count: 4)
           : wishlistItems.isEmpty
               ? _emptyWishlistView()
               : RefreshIndicator(

@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../services/inventory_service.dart';
 import '../../../services/realtime_notification_service.dart';
 import '../../../theme/app_theme.dart';
+import '../../../widgets/customer_shimmer_loading.dart';
 import 'order_placed_screen.dart';
 
 class CheckoutScreen extends StatefulWidget {
@@ -684,7 +685,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         ),
       ),
       body: isLoading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+          ? const CustomerProductDetailShimmer()
           : cartItems.isEmpty
               ? _emptyCartView()
               : SingleChildScrollView(

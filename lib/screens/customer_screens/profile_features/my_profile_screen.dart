@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../theme/app_theme.dart';
+import '../../../widgets/customer_shimmer_loading.dart';
 import '../../../services/session_service.dart';
 import '../../chat/inbox_screen.dart';
 
@@ -156,7 +157,7 @@ class _MyProfileScreenState extends State<MyProfileScreen> {
       ),
 
       body: isLoading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+          ? const CustomerProfileShimmer()
           : RefreshIndicator(
               onRefresh: fetchProfileData,
               color: AppColors.primary,

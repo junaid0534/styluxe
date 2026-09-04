@@ -3,6 +3,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../theme/app_theme.dart';
+import '../../../widgets/customer_shimmer_loading.dart';
 import '../product/product_detail_screen.dart';
 
 class ShopNowScreen extends StatefulWidget {
@@ -828,8 +829,9 @@ class _ShopNowScreenState extends State<ShopNowScreen> {
             // Product Grid View
             Expanded(
               child: isLoading
-                  ? const Center(
-                      child: CircularProgressIndicator(color: AppColors.primary),
+                  ? const SingleChildScrollView(
+                      physics: BouncingScrollPhysics(),
+                      child: CustomerProductsGridShimmer(itemCount: 6),
                     )
                   : filteredProducts.isEmpty
                       ? _emptyView()
