@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../services/inventory_service.dart';
+import '../../../services/realtime_notification_service.dart';
 import '../../../theme/app_theme.dart';
 import 'order_placed_screen.dart';
 
@@ -398,20 +400,21 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
       final shortItems = itemNames.take(2).join(", ");
       final extraCount = itemNames.length > 2 ? itemNames.length - 2 : 0;
-
       final itemsText = extraCount > 0
           ? "$shortItems and $extraCount more item(s)"
           : shortItems;
 
-      await supabase.from('notifications').insert({
-        'user_id': userId,
-        'title': 'Order Confirmed',
-        'message':
-            'Your order #$orderCode has been confirmed successfully. Status: Pending. Items: $itemsText. Total: Rs. ${orderAmount.toStringAsFixed(0)}.',
-        'is_read': false,
-      });
+      final finalOrderCode = orderCode.isNotEmpty ? orderCode : 'ORD-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
 
-      debugPrint("Order confirmed notification inserted for $orderCode");
+      await RealtimeNotificationService.sendNotification(
+        userId: userId,
+        title: '🎉 Order Confirmed!',
+        message: 'Your order #$finalOrderCode has been confirmed successfully. Total: Rs. ${orderAmount.toStringAsFixed(0)} ($itemsText).',
+        type: 'order',
+        additionalData: {'order_code': finalOrderCode},
+      );
+
+      debugPrint("Order confirmed notification sent for $finalOrderCode");
     } catch (e) {
       debugPrint("Order confirmed notification error: $e");
     }
@@ -539,6 +542,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           final productId = product['id'];
           final price = (product['price'] as num?)?.toDouble() ?? 0.0;
           final qty = (item['quantity'] as num?)?.toInt() ?? 1;
+          final selSize = item['selected_size']?.toString() ?? product['size']?.toString();
+          final selColor = item['selected_color']?.toString() ?? product['color']?.toString();
 
           if (productId == null) throw Exception("Product ID missing");
 
@@ -549,11 +554,27 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             'seller_id': sellerId,
             'quantity': qty,
             'price': price,
+            if (selSize != null && selSize.isNotEmpty) 'selected_size': selSize,
+            if (selColor != null && selColor.isNotEmpty) 'selected_color': selColor,
           });
         }
 
         if (orderItemsData.isNotEmpty) {
-          await supabase.from('order_items').insert(orderItemsData);
+          try {
+            await supabase.from('order_items').insert(orderItemsData);
+          } catch (insertErr) {
+            final pruned = orderItemsData.map((m) => {
+              'order_id': m['order_id'],
+              'product_id': m['product_id'],
+              'buyer_id': m['buyer_id'],
+              'seller_id': m['seller_id'],
+              'quantity': m['quantity'],
+              'price': m['price'],
+            }).toList();
+            await supabase.from('order_items').insert(pruned);
+          }
+          // Reverse-count / deduct product stock for each item ordered
+          await InventoryService.deductStockForOrderItems(orderItemsData);
         }
 
         await _sendOrderConfirmedNotification(
@@ -562,6 +583,21 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           orderAmount: orderTotal,
           sellerItems: sellerItems,
         );
+
+        // Send Realtime Push Notification to Seller
+        if (sellerId.toString().isNotEmpty) {
+          final custName = customerNameController.text.trim();
+          final displayCust = custName.isNotEmpty ? custName : 'A customer';
+          final placedOrderCode = orderResult['order_id']?.toString() ?? orderCode;
+
+          await RealtimeNotificationService.sendNotification(
+            userId: sellerId.toString(),
+            title: '🛍️ New Order Received!',
+            message: 'Order #$placedOrderCode received from $displayCust for Rs. ${orderTotal.toStringAsFixed(0)}.',
+            type: 'new_order',
+            additionalData: {'order_id': orderResult['id'], 'order_code': placedOrderCode},
+          );
+        }
       }
 
       if (isManualAddressMode && saveAddressToProfile) {
@@ -629,7 +665,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         toolbarHeight: 46.0,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.slateDark, size: 17),
+          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.slateDark, size: 21),
           onPressed: () {
             if (currentStep > 0) {
               setState(() => currentStep--);
@@ -2018,6 +2054,20 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                               fontSize: 12,
                             ),
                           ),
+                          if ((item['selected_color'] != null && item['selected_color'].toString().isNotEmpty) || (item['selected_size'] != null && item['selected_size'].toString().isNotEmpty)) ...[
+                            const SizedBox(height: 1.5),
+                            Text(
+                              [
+                                if (item['selected_color'] != null && item['selected_color'].toString().isNotEmpty) item['selected_color'].toString(),
+                                if (item['selected_size'] != null && item['selected_size'].toString().isNotEmpty) "Size: ${item['selected_size']}",
+                              ].join(" • "),
+                              style: const TextStyle(
+                                color: AppColors.primary,
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 2),
                           Text(
                             "Qty: $qty × Rs. ${price.toStringAsFixed(0)}",

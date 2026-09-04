@@ -1,8 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'seller_product_detail_screen.dart';
 import '../../../widgets/seller_bottom_nav.dart';
+import '../../../widgets/seller_shimmer_loading.dart';
 
 class MyProductsScreen extends StatefulWidget {
   const MyProductsScreen({super.key});
@@ -17,6 +20,7 @@ class _MyProductsScreenState extends State<MyProductsScreen> {
 
   List<Map<String, dynamic>> products = [];
   bool isLoading = true;
+  bool _isNavVisible = true;
 
   String selectedCategoryFilter = "All";
   String selectedStockFilter = "All";
@@ -28,10 +32,13 @@ class _MyProductsScreenState extends State<MyProductsScreen> {
   static const Color cardBorderColor = Color(0xFFE2E8F0);
   static const Color bgColor = Colors.white;
 
+  StreamSubscription? _productsSub;
+
   @override
   void initState() {
     super.initState();
     fetchMyProducts();
+    _subscribeRealtimeProducts();
     searchController.addListener(() {
       if (mounted) setState(() {});
     });
@@ -39,13 +46,28 @@ class _MyProductsScreenState extends State<MyProductsScreen> {
 
   @override
   void dispose() {
+    _productsSub?.cancel();
     searchController.dispose();
     super.dispose();
   }
 
+  void _subscribeRealtimeProducts() {
+    try {
+      final user = supabase.auth.currentUser;
+      if (user == null) return;
+      _productsSub = supabase
+          .from('products')
+          .stream(primaryKey: ['id'])
+          .eq('seller_id', user.id)
+          .listen((_) {
+            if (mounted) fetchMyProducts(silent: true);
+          });
+    } catch (_) {}
+  }
+
   // ================= FETCH MY PRODUCTS =================
-  Future<void> fetchMyProducts() async {
-    if (mounted) setState(() => isLoading = true);
+  Future<void> fetchMyProducts({bool silent = false}) async {
+    if (!silent && mounted) setState(() => isLoading = true);
 
     try {
       final user = supabase.auth.currentUser;
@@ -60,7 +82,12 @@ class _MyProductsScreenState extends State<MyProductsScreen> {
       if (!mounted) return;
 
       setState(() {
-        products = List<Map<String, dynamic>>.from(data);
+        // Filter out deleted/archived products
+        products = List<Map<String, dynamic>>.from(data).where((p) {
+          if (p['is_deleted'] == true) return false;
+          if (p['status']?.toString().toLowerCase() == 'deleted') return false;
+          return true;
+        }).toList();
         isLoading = false;
       });
     } catch (e) {
@@ -99,25 +126,6 @@ class _MyProductsScreenState extends State<MyProductsScreen> {
     }
   }
 
-  // ================= DELETE PRODUCT =================
-  Future<void> _deleteProduct(String productId) async {
-    try {
-      await supabase.from('products').delete().eq('id', productId);
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Product deleted successfully"), backgroundColor: Colors.red),
-      );
-
-      fetchMyProducts();
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Failed to delete product: $e"), backgroundColor: Colors.red),
-      );
-    }
-  }
-
   List<String> get categoriesList {
     final Set<String> set = {"All"};
     for (final p in products) {
@@ -152,6 +160,7 @@ class _MyProductsScreenState extends State<MyProductsScreen> {
     }).toList();
 
     final totalCount = products.length;
+    final totalUnitsCount = products.fold<int>(0, (sum, p) => sum + ((p['stock'] as num?)?.toInt() ?? 0));
     final inStockCount = products.where((p) => ((p['is_active'] as bool?) ?? true) && ((p['stock'] as num?)?.toInt() ?? 0) > 0).length;
     final outOfStockCount = totalCount - inStockCount;
 
@@ -161,227 +170,285 @@ class _MyProductsScreenState extends State<MyProductsScreen> {
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
         elevation: 0,
+        toolbarHeight: 42.0,
         centerTitle: true,
         title: const Text(
-          "My Products Catalog",
-          style: TextStyle(color: slateDark, fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: -0.3),
+          "Products",
+          style: TextStyle(
+            color: slateDark,
+            fontSize: 17.5,
+            fontWeight: FontWeight.w900,
+            letterSpacing: -0.3,
+          ),
         ),
+        actions: [
+          InkWell(
+            onTap: () async {
+              final res = await Navigator.pushNamed(context, '/add_product');
+              if (res == true) fetchMyProducts();
+            },
+            borderRadius: BorderRadius.circular(10),
+            child: Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: sapphireBlue,
+                borderRadius: BorderRadius.circular(10),
+                boxShadow: [
+                  BoxShadow(
+                    color: sapphireBlue.withValues(alpha: 0.35),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              alignment: Alignment.center,
+              child: const Icon(Icons.add_rounded, color: Colors.white, size: 20),
+            ),
+          )
+              .animate(onPlay: (c) => c.repeat(reverse: true))
+              .scale(begin: const Offset(0.92, 0.92), end: const Offset(1.08, 1.08), duration: 1200.ms, curve: Curves.easeInOut),
+          const SizedBox(width: 14),
+        ],
       ),
       body: isLoading
-          ? const Center(child: CircularProgressIndicator(color: sapphireBlue))
-          : RefreshIndicator(
-              onRefresh: fetchMyProducts,
-              color: sapphireBlue,
-              child: Align(
-                alignment: Alignment.topCenter,
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 1100),
-                  child: CustomScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-                    slivers: [
-                      SliverToBoxAdapter(
-                        child: Column(
-                          children: [
-                            const SizedBox(height: 8),
+          ? const SellerProductsShimmer()
+          : NotificationListener<ScrollNotification>(
+              onNotification: (notification) {
+                if (notification is UserScrollNotification) {
+                  if (notification.direction == ScrollDirection.reverse) {
+                    if (_isNavVisible) setState(() => _isNavVisible = false);
+                  } else if (notification.direction == ScrollDirection.forward) {
+                    if (!_isNavVisible) setState(() => _isNavVisible = true);
+                  }
+                } else if (notification is ScrollEndNotification) {
+                  if (!_isNavVisible) setState(() => _isNavVisible = true);
+                }
+                return false;
+              },
+              child: RefreshIndicator(
+                onRefresh: fetchMyProducts,
+                color: sapphireBlue,
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 1100),
+                    child: CustomScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                      slivers: [
+                        SliverToBoxAdapter(
+                          child: Column(
+                            children: [
+                              const SizedBox(height: 8),
 
-                            // ================= 1. ROYAL SAPPHIRE HERO BANNER =================
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
-                              child: _buildHeroCard(totalCount, inStockCount, outOfStockCount),
-                            ),
+                              // ================= 1. ROYAL SAPPHIRE 3-METRIC KPI ROW =================
+                              _buildMetricsSummaryRow(totalCount, totalUnitsCount, outOfStockCount),
 
-                            const SizedBox(height: 14),
+                              const SizedBox(height: 12),
 
-                            // ================= 2. SEARCH BAR =================
-                            Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 16),
-                              child: Container(
-                                height: 44,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF8FAFC),
-                                  borderRadius: BorderRadius.circular(14),
-                                  border: Border.all(color: cardBorderColor, width: 1.2),
-                                ),
+                              // ================= 2. ULTRA-CLEAN SINGLE SEARCH BAR =================
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
                                 child: TextField(
                                   controller: searchController,
                                   onChanged: (_) => setState(() {}),
-                                  style: const TextStyle(fontSize: 13, color: slateDark, fontWeight: FontWeight.w700),
-                                  decoration: const InputDecoration(
+                                  style: const TextStyle(fontSize: 13, color: slateDark, fontWeight: FontWeight.w600),
+                                  decoration: InputDecoration(
+                                    filled: true,
+                                    fillColor: const Color(0xFFF1F5F9),
+                                    isDense: true,
                                     hintText: "Search products by name or category...",
-                                    hintStyle: TextStyle(color: slateMuted, fontSize: 12.5),
-                                    prefixIcon: Icon(Icons.search_rounded, color: sapphireBlue, size: 20),
-                                    border: InputBorder.none,
-                                    contentPadding: EdgeInsets.symmetric(vertical: 11),
+                                    hintStyle: const TextStyle(color: slateMuted, fontSize: 12.5),
+                                    prefixIcon: const Icon(Icons.search_rounded, color: slateMuted, size: 20),
+                                    suffixIcon: searchController.text.isNotEmpty
+                                        ? InkWell(
+                                            onTap: () {
+                                              searchController.clear();
+                                              setState(() {});
+                                            },
+                                            child: const Icon(Icons.clear_rounded, color: slateMuted, size: 18),
+                                          )
+                                        : null,
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: const BorderSide(color: Color(0xFFE2E8F0), width: 1.2),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: const BorderSide(color: Color(0xFFE2E8F0), width: 1.2),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: const BorderSide(color: sapphireBlue, width: 1.5),
+                                    ),
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                                   ),
                                 ),
                               ),
-                            ),
 
-                            const SizedBox(height: 12),
+                              const SizedBox(height: 10),
 
-                            // ================= 3. CATEGORY FILTER BAR =================
-                            _buildCategoryFilterBar(),
+                              // ================= 3. CATEGORY FILTER BAR =================
+                              _buildCategoryFilterBar(),
 
-                            const SizedBox(height: 12),
-                          ],
+                              const SizedBox(height: 12),
+                            ],
+                          ),
                         ),
-                      ),
 
-                      // ================= 4. RESPONSIVE PRODUCTS GRID =================
-                      if (filtered.isEmpty)
-                        SliverToBoxAdapter(child: _buildEmptyView())
-                      else
-                        SliverLayoutBuilder(
-                          builder: (context, constraints) {
-                            final width = constraints.crossAxisExtent;
-                            int crossAxisCount = 2;
-                            double childAspectRatio = 0.58;
+                        // ================= 4. RESPONSIVE PRODUCTS GRID =================
+                        if (filtered.isEmpty)
+                          SliverToBoxAdapter(child: _buildEmptyView())
+                        else
+                          SliverLayoutBuilder(
+                            builder: (context, constraints) {
+                              final width = constraints.crossAxisExtent;
+                              int crossAxisCount = 2;
+                              double childAspectRatio = 0.56;
 
-                            if (width >= 1000) {
-                              crossAxisCount = 4;
-                              childAspectRatio = 0.68;
-                            } else if (width >= 700) {
-                              crossAxisCount = 3;
-                              childAspectRatio = 0.64;
-                            } else if (width < 360) {
-                              crossAxisCount = 2;
-                              childAspectRatio = 0.54;
-                            }
+                              if (width >= 1000) {
+                                crossAxisCount = 4;
+                                childAspectRatio = 0.68;
+                              } else if (width >= 700) {
+                                crossAxisCount = 3;
+                                childAspectRatio = 0.62;
+                              } else if (width < 360) {
+                                crossAxisCount = 2;
+                                childAspectRatio = 0.52;
+                              }
 
-                            return SliverPadding(
-                              padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-                              sliver: SliverGrid(
-                                delegate: SliverChildBuilderDelegate(
-                                  (context, index) {
-                                    final item = filtered[index];
-                                    return _modernProductGridCard(item).animate().fadeIn(duration: 350.ms).slideY(begin: 0.05);
-                                  },
-                                  childCount: filtered.length,
+                              return SliverPadding(
+                                padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                                sliver: SliverGrid(
+                                  delegate: SliverChildBuilderDelegate(
+                                    (context, index) {
+                                      final item = filtered[index];
+                                      return _modernProductGridCard(item).animate().fadeIn(duration: 350.ms).slideY(begin: 0.05);
+                                    },
+                                    childCount: filtered.length,
+                                  ),
+                                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                    crossAxisCount: crossAxisCount,
+                                    crossAxisSpacing: 12,
+                                    mainAxisSpacing: 12,
+                                    childAspectRatio: childAspectRatio,
+                                  ),
                                 ),
-                                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: crossAxisCount,
-                                  crossAxisSpacing: 12,
-                                  mainAxisSpacing: 12,
-                                  childAspectRatio: childAspectRatio,
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                    ],
+                              );
+                            },
+                          ),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
-      bottomNavigationBar: const SellerBottomNav(currentIndex: 2),
-    );
-  }
-
-  // ================= HERO CARD BANNER =================
-  Widget _buildHeroCard(int total, int inStock, int outStock) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF2563EB),
-            Color(0xFF1D4ED8),
+      bottomNavigationBar: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+        height: _isNavVisible ? (58.0 + MediaQuery.of(context).padding.bottom) : 0.0,
+        child: Wrap(
+          children: [
+            AnimatedSlide(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+              offset: _isNavVisible ? Offset.zero : const Offset(0, 1.0),
+              child: const SellerBottomNav(currentIndex: 2),
+            ),
           ],
         ),
-        boxShadow: [
-          BoxShadow(
-            color: sapphireBlue.withValues(alpha: 0.25),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
       ),
-      child: Column(
+    );
+  }
+
+  // ================= 1. ROYAL SAPPHIRE 3-METRIC KPI ROW =================
+  Widget _buildMetricsSummaryRow(int total, int inStockUnits, int outStock) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Inventory Overview",
-                      style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w900),
-                    ),
-                    SizedBox(height: 2),
-                    Text(
-                      "Manage stock & pricing status",
-                      style: TextStyle(color: Color(0xFFBFDBFE), fontSize: 11, fontWeight: FontWeight.w500),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: sapphireBlue,
-                  elevation: 2,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-                onPressed: () async {
-                  final res = await Navigator.pushNamed(context, '/add_product');
-                  if (res == true) fetchMyProducts();
-                },
-                icon: const Icon(Icons.add_circle_rounded, color: sapphireBlue, size: 15),
-                label: const Text("Add Product", style: TextStyle(color: sapphireBlue, fontSize: 11, fontWeight: FontWeight.w900)),
-              ),
-            ],
+          _modernKpiCard(
+            label: "Total Items",
+            value: "$total",
+            icon: Icons.inventory_2_outlined,
+            iconColor: Colors.white,
+            iconBg: Colors.white.withValues(alpha: 0.18),
           ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              _kpiStatChip("Total Items", "$total", Icons.inventory_2_rounded),
-              const SizedBox(width: 6),
-              _kpiStatChip("In Stock", "$inStock", Icons.check_circle_rounded),
-              const SizedBox(width: 6),
-              _kpiStatChip("Out of Stock", "$outStock", Icons.remove_circle_rounded),
-            ],
+          const SizedBox(width: 8),
+          _modernKpiCard(
+            label: "In Stock Units",
+            value: "$inStockUnits",
+            icon: Icons.check_circle_rounded,
+            iconColor: const Color(0xFF34D399),
+            iconBg: Colors.white.withValues(alpha: 0.18),
+          ),
+          const SizedBox(width: 8),
+          _modernKpiCard(
+            label: "Out of Stock",
+            value: "$outStock",
+            icon: Icons.remove_circle_rounded,
+            iconColor: const Color(0xFFFCA5A5),
+            iconBg: Colors.white.withValues(alpha: 0.18),
           ),
         ],
       ),
     );
   }
 
-  Widget _kpiStatChip(String label, String value, IconData icon) {
+  Widget _modernKpiCard({
+    required String label,
+    required String value,
+    required IconData icon,
+    required Color iconColor,
+    required Color iconBg,
+  }) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 10),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.14),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+          color: const Color(0xFF2563EB),
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF2563EB).withValues(alpha: 0.28),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(icon, color: Colors.white, size: 14),
-            const SizedBox(width: 4),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(value, style: const TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.w900)),
-                  Text(
-                    label,
-                    style: const TextStyle(color: Color(0xFFBFDBFE), fontSize: 9, fontWeight: FontWeight.w600),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(4.5),
+                  decoration: BoxDecoration(
+                    color: iconBg,
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                ],
+                  child: Icon(icon, color: iconColor, size: 14),
+                ),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Color(0xFFDBEAFE),
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ],
@@ -436,113 +503,137 @@ class _MyProductsScreenState extends State<MyProductsScreen> {
 
     final discountPercent = (origPrice > price && origPrice > 0) ? (((origPrice - price) / origPrice) * 100).round() : 0;
 
-    return InkWell(
-      onTap: () async {
-        final updated = await Navigator.push<bool>(
-          context,
-          MaterialPageRoute(
-            builder: (ctx) => SellerProductDetailScreen(product: item),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: cardBorderColor, width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
           ),
-        );
-        if (updated == true && mounted) fetchMyProducts();
-      },
-      borderRadius: BorderRadius.circular(18),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: cardBorderColor, width: 1.5),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
-            ),
-          ],
-        ),
-        child: Column(
+        ],
+      ),
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // IMAGE THUMBNAIL WITH BADGES & DELETE BUTTON
+          // IMAGE THUMBNAIL WITH BADGES
           Expanded(
-            child: Stack(
-              children: [
-                Container(
-                  width: double.infinity,
-                  height: double.infinity,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFF8FAFC),
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(16.5)),
+            child: InkWell(
+              onTap: () async {
+                final updated = await Navigator.push<bool>(
+                  context,
+                  MaterialPageRoute(
+                    builder: (ctx) => SellerProductDetailScreen(product: item),
                   ),
-                  clipBehavior: Clip.antiAlias,
-                  padding: const EdgeInsets.all(4),
-                  child: (imageUrl != null && imageUrl.isNotEmpty)
-                      ? Image.network(
-                          imageUrl,
-                          fit: BoxFit.contain,
-                          alignment: Alignment.center,
-                          width: double.infinity,
-                          height: double.infinity,
-                          errorBuilder: (ctx, err, stack) => Container(
+                );
+                if (updated == true && mounted) fetchMyProducts();
+              },
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+              child: Stack(
+                children: [
+                  Container(
+                    width: double.infinity,
+                    height: double.infinity,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(16.5)),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    padding: const EdgeInsets.all(6),
+                    child: (imageUrl != null && imageUrl.isNotEmpty)
+                        ? Image.network(
+                            imageUrl,
+                            fit: BoxFit.contain,
+                            alignment: Alignment.center,
+                            width: double.infinity,
+                            height: double.infinity,
+                            errorBuilder: (ctx, err, stack) => Container(
+                              color: const Color(0xFFF1F5F9),
+                              child: const Center(child: Icon(Icons.broken_image_rounded, color: slateMuted, size: 28)),
+                            ),
+                          )
+                        : Container(
                             color: const Color(0xFFF1F5F9),
-                            child: const Center(child: Icon(Icons.broken_image_rounded, color: slateMuted, size: 32)),
+                            child: const Center(child: Icon(Icons.inventory_2_outlined, color: slateMuted, size: 32)),
                           ),
-                        )
-                      : Container(
-                          color: const Color(0xFFF1F5F9),
-                          child: const Center(child: Icon(Icons.inventory_2_outlined, color: slateMuted, size: 36)),
-                        ),
-                ),
-                // Stock Status Badge
-                Positioned(
-                  left: 6,
-                  top: 6,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: isActive ? const Color(0xFF10B981) : Colors.orange,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      isActive ? "IN STOCK" : "OUT OF STOCK",
-                      style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w900),
-                    ),
                   ),
-                ),
-                // Discount Badge
-                if (discountPercent > 0)
+                  // Stock Status Pill (Top-Left)
                   Positioned(
                     left: 6,
-                    bottom: 6,
+                    top: 6,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2.5),
                       decoration: BoxDecoration(
-                        color: sapphireBlue,
+                        color: (!isActive || stock <= 0)
+                            ? const Color(0xFFEF4444)
+                            : (stock <= 5 ? const Color(0xFFF59E0B) : const Color(0xFF10B981)),
                         borderRadius: BorderRadius.circular(6),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.12),
+                            blurRadius: 4,
+                            offset: const Offset(0, 1),
+                          ),
+                        ],
                       ),
-                      child: Text(
-                        "-$discountPercent%",
-                        style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w900),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 4.5,
+                            height: 4.5,
+                            decoration: const BoxDecoration(shape: BoxShape.circle, color: Colors.white),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            (!isActive || stock <= 0)
+                                ? "OUT OF STOCK"
+                                : (stock <= 5 ? "LOW: $stock" : "IN STOCK: $stock"),
+                            style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w900),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-              ],
+                  // Discount Badge (Bottom-Left)
+                  if (discountPercent > 0)
+                    Positioned(
+                      left: 6,
+                      bottom: 6,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: sapphireBlue,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          "-$discountPercent%",
+                          style: const TextStyle(color: Colors.white, fontSize: 8.5, fontWeight: FontWeight.w900),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
 
           // PRODUCT INFO BODY
           Padding(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Category & Size Row
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Flexible(
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                        decoration: BoxDecoration(color: sapphireLight, borderRadius: BorderRadius.circular(6)),
+                        decoration: BoxDecoration(color: sapphireLight, borderRadius: BorderRadius.circular(5)),
                         child: Text(
                           category.toUpperCase(),
                           maxLines: 1,
@@ -563,20 +654,33 @@ class _MyProductsScreenState extends State<MyProductsScreen> {
                   ],
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: slateDark, fontSize: 12.5, fontWeight: FontWeight.w900),
+                // Title
+                InkWell(
+                  onTap: () async {
+                    final updated = await Navigator.push<bool>(
+                      context,
+                      MaterialPageRoute(
+                        builder: (ctx) => SellerProductDetailScreen(product: item),
+                      ),
+                    );
+                    if (updated == true && mounted) fetchMyProducts();
+                  },
+                  child: Text(
+                    name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: slateDark, fontSize: 12.5, fontWeight: FontWeight.w900),
+                  ),
                 ),
                 const SizedBox(height: 3),
+                // Price & Quantity
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Expanded(
                       child: Row(
                         children: [
-                          Text("Rs. ${price.toStringAsFixed(0)}", style: const TextStyle(color: slateDark, fontSize: 13, fontWeight: FontWeight.w900)),
+                          Text("Rs. ${price.toStringAsFixed(0)}", style: const TextStyle(color: sapphireBlue, fontSize: 13, fontWeight: FontWeight.w900)),
                           if (origPrice > price) ...[
                             const SizedBox(width: 3),
                             Flexible(
@@ -595,77 +699,71 @@ class _MyProductsScreenState extends State<MyProductsScreen> {
                       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
                       decoration: BoxDecoration(
                         color: const Color(0xFFF1F5F9),
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: BorderRadius.circular(5),
                         border: Border.all(color: const Color(0xFFE2E8F0)),
                       ),
                       child: Text(
                         "Qty: $stock",
-                        style: const TextStyle(color: slateDark, fontSize: 9.5, fontWeight: FontWeight.w800),
+                        style: const TextStyle(color: slateDark, fontSize: 9, fontWeight: FontWeight.w800),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 4),
-                const Divider(height: 1),
-                const SizedBox(height: 4),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Transform.scale(
-                      scale: 0.7,
-                      child: Switch(
-                        value: isActive,
-                        activeThumbColor: sapphireBlue,
-                        onChanged: (val) => _toggleProductStock(id, isActive),
+                const SizedBox(height: 6),
+                const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                const SizedBox(height: 6),
+
+                // ================= BOTTOM 1-TAP STATUS TOGGLE =================
+                InkWell(
+                  onTap: () => _toggleProductStock(id, isActive),
+                  borderRadius: BorderRadius.circular(9),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: isActive ? const Color(0xFFECFDF5) : const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(9),
+                      border: Border.all(
+                        color: isActive ? const Color(0xFFA7F3D0) : const Color(0xFFE2E8F0),
+                        width: 1,
                       ),
                     ),
-                    InkWell(
-                      onTap: () => _confirmDeleteProduct(id, name),
-                      borderRadius: BorderRadius.circular(8),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3.5),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFEF2F2),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: const Color(0xFFFCA5A5)),
-                        ),
-                        child: const Row(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
                           children: [
-                            Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444), size: 12),
-                            SizedBox(width: 2),
+                            Container(
+                              width: 6,
+                              height: 6,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: isActive ? const Color(0xFF10B981) : slateMuted,
+                              ),
+                            ),
+                            const SizedBox(width: 5),
                             Text(
-                              "Delete",
-                              style: TextStyle(color: Color(0xFFEF4444), fontSize: 9.5, fontWeight: FontWeight.w800),
+                              isActive ? "Active (Listed)" : "Inactive (Off)",
+                              style: TextStyle(
+                                color: isActive ? const Color(0xFF047857) : slateMuted,
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w800,
+                              ),
                             ),
                           ],
                         ),
-                      ),
+                        Icon(
+                          isActive ? Icons.toggle_on_rounded : Icons.toggle_off_rounded,
+                          color: isActive ? const Color(0xFF10B981) : slateMuted,
+                          size: 20,
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ],
             ),
-          ),
-        ],
-      ),
-    ),
-  );
-}
-
-  void _confirmDeleteProduct(String productId, String productName) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text("Delete Product?", style: TextStyle(fontWeight: FontWeight.w900)),
-        content: Text("Are you sure you want to delete '$productName'? This cannot be undone."),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              _deleteProduct(productId);
-            },
-            child: const Text("Delete", style: TextStyle(color: Colors.red, fontWeight: FontWeight.w800)),
           ),
         ],
       ),

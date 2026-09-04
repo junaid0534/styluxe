@@ -340,6 +340,394 @@ class _CartScreenState extends State<CartScreen> {
     }
   }
 
+  Color _getColorFromName(String name) {
+    final n = name.trim().toLowerCase();
+    if (n.contains('black')) return const Color(0xFF1E293B);
+    if (n.contains('white')) return const Color(0xFFF1F5F9);
+    if (n.contains('navy')) return const Color(0xFF1E3A8A);
+    if (n.contains('royal')) return const Color(0xFF2563EB);
+    if (n.contains('blue')) return const Color(0xFF3B82F6);
+    if (n.contains('maroon')) return const Color(0xFF881337);
+    if (n.contains('red')) return const Color(0xFFDC2626);
+    if (n.contains('brown')) return const Color(0xFF78350F);
+    if (n.contains('beige')) return const Color(0xFFD4B996);
+    if (n.contains('sage') || (n.contains('grey') && n.contains('sage'))) return const Color(0xFF9CA3AF);
+    if (n.contains('emerald') || n.contains('green')) return const Color(0xFF059669);
+    if (n.contains('purple')) return const Color(0xFF9333EA);
+    if (n.contains('pink')) return const Color(0xFFEC4899);
+    if (n.contains('yellow')) return const Color(0xFFEAB308);
+    if (n.contains('olive')) return const Color(0xFF65A30D);
+    if (n.contains('gold')) return const Color(0xFFCA8A04);
+    if (n.contains('grey') || n.contains('gray')) return const Color(0xFF64748B);
+    if (n.contains('orange')) return const Color(0xFFEA580C);
+    if (n.contains('teal')) return const Color(0xFF0D9488);
+    return const Color(0xFF2563EB);
+  }
+
+  void _onPlusClicked(Map<String, dynamic> item, Map<String, dynamic> product) {
+    final rawColor = product['color']?.toString() ?? '';
+    final rawSize = product['size']?.toString() ?? '';
+
+    final colors = rawColor.split(RegExp(r'[,|/•]+')).map((c) => c.trim()).where((c) => c.isNotEmpty).toList();
+    final sizes = rawSize.split(RegExp(r'[,|/•]+')).map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+
+    if (colors.length > 1 || sizes.length > 1) {
+      _showAddVariantModal(context, item, product, colors, sizes);
+    } else {
+      final currentQty = (item['quantity'] as num?)?.toInt() ?? 1;
+      updateQuantity(item['id'], currentQty + 1);
+    }
+  }
+
+  void _showAddVariantModal(
+    BuildContext context,
+    Map<String, dynamic> item,
+    Map<String, dynamic> product,
+    List<String> colors,
+    List<String> sizes,
+  ) {
+    String? selectedModalColor = item['selected_color']?.toString() ?? (colors.isNotEmpty ? colors.first : null);
+    String? selectedModalSize = item['selected_size']?.toString() ?? (sizes.isNotEmpty ? sizes.first : null);
+
+    final String name = product['name']?.toString() ?? 'Product';
+    final double price = (product['price'] as num?)?.toDouble() ?? 0.0;
+    String resolvedImageUrl = (product['image_url'] ??
+            product['image'] ??
+            product['photo_url'] ??
+            product['cover_image'])
+        ?.toString() ??
+        '';
+
+    if (resolvedImageUrl.isEmpty &&
+        product['image_urls'] is List &&
+        (product['image_urls'] as List).isNotEmpty) {
+      resolvedImageUrl = product['image_urls'][0].toString();
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (modalCtx) => StatefulBuilder(
+        builder: (ctx, setModalState) => Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          padding: EdgeInsets.fromLTRB(
+            20,
+            12,
+            20,
+            24 + MediaQuery.of(modalCtx).padding.bottom,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Drag Handle
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFCBD5E1),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              // Title Row
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    "Select Color & Size",
+                    style: TextStyle(
+                      color: AppColors.slateDark,
+                      fontSize: 15.5,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(modalCtx),
+                    icon: const Icon(Icons.close_rounded, color: AppColors.slateMuted, size: 20),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+
+              // Mini Product Preview Card
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: resolvedImageUrl.isNotEmpty
+                          ? Image.network(resolvedImageUrl, fit: BoxFit.contain)
+                          : const Icon(Icons.shopping_bag_outlined, color: AppColors.slateMuted, size: 18),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: AppColors.slateDark, fontWeight: FontWeight.w800, fontSize: 13)),
+                          Text("Rs. ${price.toStringAsFixed(0)}", style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w800, fontSize: 12)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // 1. Color Selector
+              if (colors.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.palette_outlined, size: 15, color: AppColors.primary),
+                        const SizedBox(width: 5),
+                        const Text("Available Colors:", style: TextStyle(color: AppColors.slateDark, fontSize: 13, fontWeight: FontWeight.w800)),
+                        const SizedBox(width: 6),
+                        Text(selectedModalColor ?? '', style: const TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w700)),
+                      ],
+                    ),
+                    if (colors.length > 3)
+                      Container(
+                        height: 28,
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: selectedModalColor,
+                            isDense: true,
+                            icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: AppColors.primary),
+                            items: colors.map((c) => DropdownMenuItem(
+                              value: c,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(width: 10, height: 10, decoration: BoxDecoration(color: _getColorFromName(c), shape: BoxShape.circle, border: Border.all(color: Colors.black12))),
+                                  const SizedBox(width: 6),
+                                  Text(c, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.slateDark)),
+                                ],
+                              ),
+                            )).toList(),
+                            onChanged: (val) {
+                              if (val != null) setModalState(() => selectedModalColor = val);
+                            },
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: colors.map((c) {
+                    final isSel = selectedModalColor == c;
+                    return GestureDetector(
+                      onTap: () => setModalState(() => selectedModalColor = c),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: isSel ? AppColors.primary.withValues(alpha: 0.10) : const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: isSel ? AppColors.primary : const Color(0xFFE2E8F0),
+                            width: isSel ? 1.6 : 1.0,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(width: 11, height: 11, decoration: BoxDecoration(color: _getColorFromName(c), shape: BoxShape.circle, border: Border.all(color: Colors.black12))),
+                            const SizedBox(width: 5),
+                            Text(c, style: TextStyle(color: isSel ? AppColors.primary : AppColors.slateDark, fontSize: 11, fontWeight: isSel ? FontWeight.w800 : FontWeight.w600)),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+
+              // 2. Size Selector
+              if (sizes.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.straighten_outlined, size: 15, color: Color(0xFF0891B2)),
+                        const SizedBox(width: 5),
+                        const Text("Available Sizes:", style: TextStyle(color: AppColors.slateDark, fontSize: 13, fontWeight: FontWeight.w800)),
+                        const SizedBox(width: 6),
+                        Text(selectedModalSize ?? '', style: const TextStyle(color: Color(0xFF0891B2), fontSize: 12, fontWeight: FontWeight.w700)),
+                      ],
+                    ),
+                    if (sizes.length > 5)
+                      Container(
+                        height: 28,
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: selectedModalSize,
+                            isDense: true,
+                            icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: Color(0xFF0891B2)),
+                            items: sizes.map((s) => DropdownMenuItem(
+                              value: s,
+                              child: Text(s, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.slateDark)),
+                            )).toList(),
+                            onChanged: (val) {
+                              if (val != null) setModalState(() => selectedModalSize = val);
+                            },
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: sizes.map((s) {
+                    final isSel = selectedModalSize == s;
+                    return ChoiceChip(
+                      label: Text(s, style: TextStyle(color: isSel ? Colors.white : AppColors.slateDark, fontSize: 11, fontWeight: FontWeight.w800)),
+                      selected: isSel,
+                      selectedColor: const Color(0xFF0891B2),
+                      backgroundColor: const Color(0xFFF8FAFC),
+                      side: BorderSide(color: isSel ? const Color(0xFF0891B2) : const Color(0xFFE2E8F0)),
+                      onSelected: (sel) {
+                        if (sel) setModalState(() => selectedModalSize = s);
+                      },
+                    );
+                  }).toList(),
+                ),
+              ],
+
+              const SizedBox(height: 22),
+
+              // Confirm Button
+              SizedBox(
+                width: double.infinity,
+                height: 46,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    elevation: 2,
+                  ),
+                  onPressed: () async {
+                    Navigator.pop(modalCtx);
+                    await _addVariantToCart(item, product, selectedModalColor, selectedModalSize);
+                  },
+                  icon: const Icon(Icons.add_shopping_cart_rounded, color: Colors.white, size: 18),
+                  label: const Text("ADD THIS VARIANT TO CART", style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _addVariantToCart(
+    Map<String, dynamic> item,
+    Map<String, dynamic> product,
+    String? color,
+    String? size,
+  ) async {
+    try {
+      final user = supabase.auth.currentUser;
+      if (user == null) return;
+
+      final currentItemColor = item['selected_color']?.toString();
+      final currentItemSize = item['selected_size']?.toString();
+
+      if ((color ?? '') == (currentItemColor ?? '') && (size ?? '') == (currentItemSize ?? '')) {
+        final currentQty = (item['quantity'] as num?)?.toInt() ?? 1;
+        await updateQuantity(item['id'], currentQty + 1);
+        return;
+      }
+
+      final existing = cartItems.firstWhere(
+        (c) =>
+            c['product_id']?.toString() == product['id']?.toString() &&
+            (c['selected_color']?.toString() ?? '') == (color ?? '') &&
+            (c['selected_size']?.toString() ?? '') == (size ?? ''),
+        orElse: () => {},
+      );
+
+      if (existing.isNotEmpty) {
+        final exQty = (existing['quantity'] as num?)?.toInt() ?? 1;
+        await updateQuantity(existing['id'], exQty + 1);
+      } else {
+        try {
+          await supabase.from('cart').insert({
+            'user_id': user.id,
+            'product_id': product['id'],
+            'quantity': 1,
+            if (size != null && size.isNotEmpty) 'selected_size': size,
+            if (color != null && color.isNotEmpty) 'selected_color': color,
+          });
+        } catch (_) {
+          await supabase.from('cart').insert({
+            'user_id': user.id,
+            'product_id': product['id'],
+            'quantity': 1,
+          });
+        }
+      }
+
+      await fetchCart();
+
+      if (!mounted) return;
+      final variantLabel = [if (color != null && color.isNotEmpty) color, if (size != null && size.isNotEmpty) "Size: $size"].join(", ");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Added +1 ${product['name']} ${variantLabel.isNotEmpty ? "($variantLabel)" : ""} to Cart!"),
+          backgroundColor: AppColors.primary,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      debugPrint("Add variant error: $e");
+    }
+  }
+
   // ================= ITEM CLICK OPTIONS MODAL (View Details & Delete) =================
   void _showItemOptionsModal(
     BuildContext context,
@@ -362,13 +750,30 @@ class _CartScreenState extends State<CartScreen> {
 
     final String imageUrl = resolvedImageUrl.trim();
     final String category = product['category']?.toString() ?? 'Fashion';
-    final String size = product['size']?.toString() ?? '';
-    final String color = product['color']?.toString() ?? '';
+    String size = item['selected_size']?.toString() ?? '';
+    String color = item['selected_color']?.toString() ?? '';
+
+    if (color.isEmpty) {
+      final rawCol = product['color']?.toString() ?? '';
+      if (rawCol.isNotEmpty) {
+        color = rawCol.split(RegExp(r'[,|/•]+')).first.trim();
+      }
+    }
+    if (size.isEmpty) {
+      final rawSz = product['size']?.toString() ?? '';
+      if (rawSz.isNotEmpty) {
+        size = rawSz.split(RegExp(r'[,|/•]+')).first.trim();
+      }
+    }
+
     final double price = (product['price'] as num?)?.toDouble() ?? 0.0;
-    final String subtitle = [category, color, size].where((s) => s.trim().isNotEmpty).join(" • ");
+    final String sizeLabel = size.isNotEmpty ? (size.toLowerCase().startsWith('size') ? size : "Size: $size") : '';
+    final String colorLabel = color.isNotEmpty ? (color.toLowerCase().startsWith('color') ? color : "Color: $color") : '';
+    final String subtitle = [category, colorLabel, sizeLabel].where((s) => s.trim().isNotEmpty).join(" • ");
 
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (modalContext) => Container(
         decoration: const BoxDecoration(
@@ -379,223 +784,228 @@ class _CartScreenState extends State<CartScreen> {
           20,
           12,
           20,
-          18 + MediaQuery.of(modalContext).padding.bottom,
+          16 + MediaQuery.of(modalContext).padding.bottom,
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Drag Handle
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: const Color(0xFFCBD5E1),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Product Mini Preview
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 58,
-                    height: 58,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
-                    ),
-                    padding: const EdgeInsets.all(3),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: imageUrl.isNotEmpty
-                          ? Image.network(
-                              imageUrl,
-                              fit: BoxFit.contain,
-                              errorBuilder: (_, _, _) => const Icon(Icons.shopping_bag_outlined, color: AppColors.slateMuted, size: 22),
-                            )
-                          : const Icon(Icons.shopping_bag_outlined, color: AppColors.slateMuted, size: 22),
-                    ),
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Drag Handle
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFCBD5E1),
+                    borderRadius: BorderRadius.circular(2),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.slateDark,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          "Rs. ${price.toStringAsFixed(0)}",
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.primary,
-                          ),
-                        ),
-                        if (subtitle.isNotEmpty) ...[
-                          const SizedBox(height: 2),
-                          Text(
-                            subtitle,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: AppColors.slateMuted,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Option 1: View Product Details
-            InkWell(
-              onTap: () {
-                Navigator.pop(modalContext);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ProductDetailScreen(product: product),
-                  ),
-                );
-              },
-              borderRadius: BorderRadius.circular(16),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
                 ),
-                child: const Row(
+              ),
+              const SizedBox(height: 14),
+
+              // Product Mini Preview
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Row(
                   children: [
-                    Icon(Icons.visibility_outlined, color: AppColors.primary, size: 22),
-                    SizedBox(width: 14),
+                    Container(
+                      width: 58,
+                      height: 58,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      padding: const EdgeInsets.all(3),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: imageUrl.isNotEmpty
+                            ? Image.network(
+                                imageUrl,
+                                fit: BoxFit.contain,
+                                errorBuilder: (_, _, _) => const Icon(Icons.shopping_bag_outlined, color: AppColors.slateMuted, size: 22),
+                              )
+                            : const Icon(Icons.shopping_bag_outlined, color: AppColors.slateMuted, size: 22),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            "View Details",
-                            style: TextStyle(
-                              fontSize: 14,
+                            name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 13.5,
                               fontWeight: FontWeight.w700,
                               color: AppColors.slateDark,
                             ),
                           ),
+                          const SizedBox(height: 2),
                           Text(
-                            "Open full photos, description & ratings",
-                            style: TextStyle(
-                              fontSize: 11.5,
-                              color: AppColors.slateMuted,
+                            "Rs. ${price.toStringAsFixed(0)}",
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.primary,
                             ),
                           ),
+                          if (subtitle.isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              subtitle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                color: AppColors.slateMuted,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
-                    Icon(Icons.arrow_forward_ios_rounded, color: AppColors.primary, size: 14),
                   ],
                 ),
               ),
-            ),
 
-            const SizedBox(height: 10),
+              const SizedBox(height: 14),
 
-            // Option 2: Remove from Cart
-            InkWell(
-              onTap: () {
-                Navigator.pop(modalContext);
-                removeFromCart(item['id']);
-              },
-              borderRadius: BorderRadius.circular(16),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFEF2F2),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFFECACA)),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444), size: 22),
-                    SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "Delete from Cart",
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFFEF4444),
-                            ),
-                          ),
-                          Text(
-                            "Remove this item from your shopping bag",
-                            style: TextStyle(
-                              fontSize: 11.5,
-                              color: AppColors.slateMuted,
-                            ),
-                          ),
-                        ],
-                      ),
+              // Option 1: View Product Details
+              InkWell(
+                onTap: () {
+                  Navigator.pop(modalContext);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ProductDetailScreen(product: product),
                     ),
-                    Icon(Icons.arrow_forward_ios_rounded, color: Color(0xFFEF4444), size: 14),
-                  ],
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 14),
-
-            // Cancel Button
-            SizedBox(
-              width: double.infinity,
-              height: 44,
-              child: ElevatedButton(
-                onPressed: () => Navigator.pop(modalContext),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFF1F5F9),
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(24),
+                  );
+                },
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.visibility_outlined, color: AppColors.primary, size: 22),
+                      SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "View Details",
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.slateDark,
+                              ),
+                            ),
+                            Text(
+                              "Open full photos, description & ratings",
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                color: AppColors.slateMuted,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(Icons.arrow_forward_ios_rounded, color: AppColors.primary, size: 14),
+                    ],
                   ),
                 ),
-                child: const Text(
-                  "Cancel",
-                  style: TextStyle(
-                    fontSize: 13.5,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.slateDark,
+              ),
+
+              const SizedBox(height: 10),
+
+              // Option 2: Remove from Cart
+              InkWell(
+                onTap: () {
+                  Navigator.pop(modalContext);
+                  removeFromCart(item['id']);
+                },
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFEF2F2),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFFECACA)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444), size: 22),
+                      SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Delete from Cart",
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFFEF4444),
+                              ),
+                            ),
+                            Text(
+                              "Remove this item from your shopping bag",
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                color: AppColors.slateMuted,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Icon(Icons.arrow_forward_ios_rounded, color: Color(0xFFEF4444), size: 14),
+                    ],
                   ),
                 ),
               ),
-            ),
-          ],
+
+              const SizedBox(height: 14),
+
+              // Cancel Button
+              SizedBox(
+                width: double.infinity,
+                height: 44,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(modalContext),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFF1F5F9),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                  ),
+                  child: const Text(
+                    "Cancel",
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.slateDark,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -659,31 +1069,9 @@ class _CartScreenState extends State<CartScreen> {
         elevation: 0,
         toolbarHeight: 46.0,
         centerTitle: true,
-        leading: Padding(
-          padding: const EdgeInsets.only(left: 14),
-          child: Center(
-            child: Container(
-              height: 34,
-              width: 34,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.03),
-                    blurRadius: 5,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: IconButton(
-                padding: EdgeInsets.zero,
-                icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.slateDark, size: 15),
-                onPressed: () => Navigator.pop(context),
-              ),
-            ),
-          ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.slateDark, size: 21),
+          onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
           "My Cart List",
@@ -758,6 +1146,7 @@ class _CartScreenState extends State<CartScreen> {
                                   updateQuantity(item['id'], newQty);
                                 }
                               },
+                              onPlusTap: () => _onPlusClicked(item, productMap),
                               onRemove: () => removeFromCart(item['id']),
                             ).animate().fadeIn(duration: 250.ms, delay: (index * 40).ms);
                           },
@@ -1629,6 +2018,7 @@ class CartItemCard extends StatelessWidget {
   final Map<String, dynamic> product;
   final VoidCallback onTap;
   final Function(int) onQuantityChanged;
+  final VoidCallback? onPlusTap;
   final VoidCallback onRemove;
 
   const CartItemCard({
@@ -1637,6 +2027,7 @@ class CartItemCard extends StatelessWidget {
     required this.product,
     required this.onTap,
     required this.onQuantityChanged,
+    this.onPlusTap,
     required this.onRemove,
   });
 
@@ -1660,12 +2051,28 @@ class CartItemCard extends StatelessWidget {
 
     final String imageUrl = resolvedImageUrl.trim();
     final String category = product['category']?.toString() ?? 'Fashion';
-    final String size = product['size']?.toString() ?? '';
-    final String color = product['color']?.toString() ?? '';
+    String size = item['selected_size']?.toString() ?? '';
+    String color = item['selected_color']?.toString() ?? '';
+
+    if (color.isEmpty) {
+      final rawCol = product['color']?.toString() ?? '';
+      if (rawCol.isNotEmpty) {
+        color = rawCol.split(RegExp(r'[,|/•]+')).first.trim();
+      }
+    }
+    if (size.isEmpty) {
+      final rawSz = product['size']?.toString() ?? '';
+      if (rawSz.isNotEmpty) {
+        size = rawSz.split(RegExp(r'[,|/•]+')).first.trim();
+      }
+    }
+
     final double price = (product['price'] as num?)?.toDouble() ?? 0.0;
 
     final String formattedPrice = "Rs. ${price.toStringAsFixed(0)}";
-    final String subtitle = [category, color, size].where((s) => s.trim().isNotEmpty).join(" • ");
+    final String sizeLabel = size.isNotEmpty ? (size.toLowerCase().startsWith('size') ? size : "Size: $size") : '';
+    final String colorLabel = color.isNotEmpty ? (color.toLowerCase().startsWith('color') ? color : "Color: $color") : '';
+    final String subtitle = [category, colorLabel, sizeLabel].where((s) => s.trim().isNotEmpty).join(" • ");
 
     return Dismissible(
       key: Key(item['id'].toString()),
@@ -1885,7 +2292,7 @@ class CartItemCard extends StatelessWidget {
 
                               // Plus Button
                               InkWell(
-                                onTap: () => onQuantityChanged(quantity + 1),
+                                onTap: onPlusTap ?? () => onQuantityChanged(quantity + 1),
                                 borderRadius: BorderRadius.circular(10),
                                 child: Container(
                                   width: 22,

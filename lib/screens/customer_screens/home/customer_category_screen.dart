@@ -1,399 +1,348 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:google_fonts/google_fonts.dart';
 
-class CustomerCategoryScreen extends StatelessWidget {
+class CustomerCategoryScreen extends StatefulWidget {
   const CustomerCategoryScreen({super.key});
 
-  final List<CategoryData> categories = const [
-    CategoryData(
+  @override
+  State<CustomerCategoryScreen> createState() => _CustomerCategoryScreenState();
+}
+
+class _CustomerCategoryScreenState extends State<CustomerCategoryScreen> {
+  String _searchQuery = "";
+  final TextEditingController _searchController = TextEditingController();
+
+  static const Color slateDark = Color(0xFF0F172A);
+  static const Color slateMuted = Color(0xFF64748B);
+  static const Color bgLight = Color(0xFFF8FAFC);
+  static const Color borderColor = Color(0xFFE2E8F0);
+
+  // Comprehensive Category Catalog (15 Essential Fashion Categories)
+  final List<CategoryItem> categories = const [
+    CategoryItem(
       name: "Dresses",
+      tagline: "Maxi & Party Wear",
       icon: Icons.woman_rounded,
-      gradientColors: [
-        Color(0xFF00E676),
-        Color(0xFF00C853),
-      ],
-      shadowColor: Color.fromARGB(255, 49, 198, 104),
+      accentColor: Color(0xFFEC4899),
+      bgGradient: [Color(0xFFFDF2F8), Color(0xFFFCE7F3)],
     ),
-    CategoryData(
+    CategoryItem(
       name: "Shirts",
-      icon: Icons.shopping_bag_rounded,
-      gradientColors: [
-        Color(0xFF00E676),
-        Color(0xFF00C853),
-      ],
-      shadowColor: Color.fromARGB(255, 49, 198, 104),
+      tagline: "Formal & Casual",
+      icon: Icons.dry_cleaning_rounded,
+      accentColor: Color(0xFF2563EB),
+      bgGradient: [Color(0xFFEFF6FF), Color(0xFFDBEAFE)],
     ),
-    CategoryData(
+    CategoryItem(
+      name: "T-Shirts",
+      tagline: "Polo & Graphic Tees",
+      icon: Icons.checkroom_rounded,
+      accentColor: Color(0xFFF59E0B),
+      bgGradient: [Color(0xFFFEF3C7), Color(0xFFFDE68A)],
+    ),
+    CategoryItem(
       name: "Hoodies",
+      tagline: "Winter & Sweatshirts",
       icon: Icons.local_mall_rounded,
-      gradientColors: [
-        Color(0xFF00E676),
-        Color(0xFF00C853),
-      ],
-      shadowColor: Color.fromARGB(255, 49, 198, 104),
+      accentColor: Color(0xFF8B5CF6),
+      bgGradient: [Color(0xFFF5F3FF), Color(0xFFEDE9FE)],
     ),
-    CategoryData(
+    CategoryItem(
       name: "Jeans",
+      tagline: "Denim & Trousers",
       icon: Icons.straighten_rounded,
-      gradientColors: [
-        Color(0xFF00E676),
-        Color(0xFF00C853),
-      ],
-      shadowColor: Color.fromARGB(255, 49, 198, 104),
+      accentColor: Color(0xFF3B82F6),
+      bgGradient: [Color(0xFFEFF6FF), Color(0xFFE0E7FF)],
     ),
-    CategoryData(
+    CategoryItem(
       name: "Jackets",
+      tagline: "Leather & Coats",
       icon: Icons.style_rounded,
-      gradientColors: [
-        Color(0xFF00E676),
-        Color(0xFF00C853),
-      ],
-      shadowColor: Color.fromARGB(255, 49, 198, 104),
+      accentColor: Color(0xFF0D9488),
+      bgGradient: [Color(0xFFF0FDFA), Color(0xFFCCFBF1)],
     ),
-    CategoryData(
+    CategoryItem(
+      name: "Suits",
+      tagline: "Blazers & 2-Piece",
+      icon: Icons.business_center_rounded,
+      accentColor: Color(0xFF334155),
+      bgGradient: [Color(0xFFF1F5F9), Color(0xFFE2E8F0)],
+    ),
+    CategoryItem(
       name: "Kids Wear",
+      tagline: "Boys & Girls",
       icon: Icons.child_care_rounded,
-      gradientColors: [
-        Color(0xFF00E676),
-        Color(0xFF00C853),
-      ],
-     shadowColor: Color.fromARGB(255, 49, 198, 104),
+      accentColor: Color(0xFFF43F5E),
+      bgGradient: [Color(0xFFFFF1F2), Color(0xFFFFE4E6)],
+    ),
+    CategoryItem(
+      name: "Shoes",
+      tagline: "Sneakers & Heels",
+      icon: Icons.roller_skating_rounded,
+      accentColor: Color(0xFF14B8A6),
+      bgGradient: [Color(0xFFF0FDFA), Color(0xFFD1FAE5)],
+    ),
+    CategoryItem(
+      name: "Bags",
+      tagline: "Handbags & Wallets",
+      icon: Icons.shopping_bag_rounded,
+      accentColor: Color(0xFFEA580C),
+      bgGradient: [Color(0xFFFFF7ED), Color(0xFFFFEDD5)],
+    ),
+    CategoryItem(
+      name: "Watches",
+      tagline: "Luxury & Smart",
+      icon: Icons.watch_rounded,
+      accentColor: Color(0xFFD97706),
+      bgGradient: [Color(0xFFFFFBEB), Color(0xFFFEF3C7)],
+    ),
+    CategoryItem(
+      name: "Accessories",
+      tagline: "Jewelry & Belts",
+      icon: Icons.diamond_rounded,
+      accentColor: Color(0xFF06B6D4),
+      bgGradient: [Color(0xFFECFEFF), Color(0xFFCFFAFE)],
+    ),
+    CategoryItem(
+      name: "Traditional",
+      tagline: "Kurta & Shalwar",
+      icon: Icons.auto_awesome_rounded,
+      accentColor: Color(0xFF9333EA),
+      bgGradient: [Color(0xFFFAF5FF), Color(0xFFF3E8FF)],
+    ),
+    CategoryItem(
+      name: "Activewear",
+      tagline: "Gym & Sports",
+      icon: Icons.fitness_center_rounded,
+      accentColor: Color(0xFFEF4444),
+      bgGradient: [Color(0xFFFEF2F2), Color(0xFFFEE2E2)],
+    ),
+    CategoryItem(
+      name: "Nightwear",
+      tagline: "Sleep & Loungewear",
+      icon: Icons.bedtime_rounded,
+      accentColor: Color(0xFF4F46E5),
+      bgGradient: [Color(0xFFEEF2FF), Color(0xFFE0E7FF)],
     ),
   ];
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   int _getCrossAxisCount(double width) {
-    if (width >= 1100) return 4;
-    if (width >= 760) return 3;
-    return 2;
-  }
-
-  double _getHorizontalPadding(double width) {
-    if (width >= 1100) return 48;
-    if (width >= 760) return 32;
-    return 16;
-  }
-
-  double _getCardHeight(double width) {
-    if (width < 360) return 150;
-    if (width < 600) return 165;
-    return 180;
+    if (width >= 1100) return 6;
+    if (width >= 700) return 4;
+    return 3; // Exactly 3 items per row on mobile!
   }
 
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-
     final crossAxisCount = _getCrossAxisCount(width);
-    final horizontalPadding = _getHorizontalPadding(width);
+
+    final filtered = categories.where((c) {
+      final query = _searchQuery.toLowerCase();
+      return query.isEmpty ||
+          c.name.toLowerCase().contains(query) ||
+          c.tagline.toLowerCase().contains(query);
+    }).toList();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: bgLight,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        elevation: 0,
+        toolbarHeight: 52.0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: slateDark, size: 21),
+          onPressed: () => Navigator.pop(context),
+        ),
+        centerTitle: true,
+        title: Text(
+          "All Categories",
+          style: GoogleFonts.poppins(
+            color: slateDark,
+            fontSize: 17,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.3,
+          ),
+        ),
+      ),
       body: SafeArea(
-        child: CustomScrollView(
-          physics: const BouncingScrollPhysics(),
-          slivers: [
-            // ================= APP BAR =================
-            SliverAppBar(
-              backgroundColor: const Color(0xFFA8E063),
-              surfaceTintColor: const Color(0xFFA8E063),
-              elevation: 0,
-              floating: true,
-              toolbarHeight: kToolbarHeight,
-              iconTheme: const IconThemeData(
-                color: Color(0xFF111827),
-              ),
-              title: const Text(
-                "Categories",
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: Color(0xFF111827),
-                  fontWeight: FontWeight.w900,
-                  fontSize: 22,
-                  letterSpacing: -0.3,
-                ),
-              ),
-            ),
-
-            // ================= HEADER =================
-            SliverPadding(
-              padding: EdgeInsets.fromLTRB(
-                horizontalPadding,
-                18,
-                horizontalPadding,
-                8,
-              ),
-              sliver: SliverToBoxAdapter(
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 1200),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          "Find Your Style",
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 30,
-                            fontWeight: FontWeight.w900,
-                            color: Color(0xFF111827),
-                            letterSpacing: -0.9,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          "Premium fashion collections",
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey.shade600,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
+        child: Column(
+          children: [
+            // 1. Search Bar Capsule
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 10, 14, 8),
+              child: Container(
+                height: 42,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: borderColor),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.02),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
                     ),
+                  ],
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: (val) => setState(() => _searchQuery = val.trim()),
+                  style: GoogleFonts.poppins(fontSize: 13, color: slateDark, fontWeight: FontWeight.w500),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    hintText: "Search categories (e.g. Dresses, Jeans...)",
+                    hintStyle: GoogleFonts.poppins(color: slateMuted, fontSize: 12.5),
+                    prefixIcon: const Icon(Icons.search_rounded, color: slateMuted, size: 19),
+                    suffixIcon: _searchQuery.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.cancel_rounded, color: slateMuted, size: 17),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() => _searchQuery = "");
+                            },
+                          )
+                        : null,
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 10),
                   ),
                 ),
               ),
             ),
 
-            // ================= CATEGORY CARDS =================
-            SliverPadding(
-              padding: EdgeInsets.fromLTRB(
-                horizontalPadding,
-                14,
-                horizontalPadding,
-                24,
-              ),
-              sliver: SliverGrid(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    final cat = categories[index];
-
-                    return CategoryCard(
-                      category: cat,
-                      onTap: () {
-                        Navigator.pushNamed(
-                          context,
-                          '/shop_now',
-                          arguments: cat.name,
-                        );
-                      },
+            // 2. 3-Items per row Categories Grid
+            Expanded(
+              child: filtered.isEmpty
+                  ? Center(
+                      child: Text(
+                        "No category matching '$_searchQuery'",
+                        style: GoogleFonts.poppins(color: slateMuted, fontSize: 13),
+                      ),
                     )
-                        .animate()
-                        .fadeIn(
-                          duration: 350.ms,
-                          delay: (index * 80).ms,
-                        )
-                        .scale(
-                          begin: const Offset(0.96, 0.96),
-                          end: const Offset(1, 1),
-                          duration: 350.ms,
-                          curve: Curves.easeOutCubic,
-                        );
-                  },
-                  childCount: categories.length,
-                ),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: crossAxisCount,
-                  crossAxisSpacing: 14,
-                  mainAxisSpacing: 14,
-                  mainAxisExtent: _getCardHeight(width),
-                ),
-              ),
+                  : GridView.builder(
+                      padding: const EdgeInsets.fromLTRB(14, 6, 14, 24),
+                      physics: const BouncingScrollPhysics(),
+                      itemCount: filtered.length,
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: crossAxisCount,
+                        crossAxisSpacing: 10,
+                        mainAxisSpacing: 10,
+                        childAspectRatio: 0.80, // Optimized for 3 per row
+                      ),
+                      itemBuilder: (context, index) {
+                        final cat = filtered[index];
+                        return _buildCategoryCard(cat, index);
+                      },
+                    ),
             ),
           ],
         ),
       ),
     );
   }
-}
 
-// ================= CATEGORY DATA MODEL =================
-class CategoryData {
-  final String name;
-  final IconData icon;
-  final List<Color> gradientColors;
-  final Color shadowColor;
-
-  const CategoryData({
-    required this.name,
-    required this.icon,
-    required this.gradientColors,
-    required this.shadowColor,
-  });
-}
-
-// ================= CATEGORY CARD =================
-class CategoryCard extends StatelessWidget {
-  final CategoryData category;
-  final VoidCallback onTap;
-
-  const CategoryCard({super.key, 
-    required this.category,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isCompact = constraints.maxWidth < 170;
-
-        return Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(28),
-            splashColor: Colors.white.withValues(alpha: 0.12),
-            highlightColor: Colors.white.withValues(alpha: 0.06),
-            child: Ink(
+  Widget _buildCategoryCard(CategoryItem cat, int index) {
+    return InkWell(
+      onTap: () {
+        Navigator.pushNamed(
+          context,
+          '/shop_now',
+          arguments: cat.name,
+        );
+      },
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: borderColor),
+          boxShadow: [
+            BoxShadow(
+              color: cat.accentColor.withValues(alpha: 0.06),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Icon in Pastel Gradient Squircle
+            Container(
+              width: 48,
+              height: 48,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(28),
                 gradient: LinearGradient(
-                  colors: category.gradientColors,
+                  colors: cat.bgGradient,
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: category.shadowColor.withValues(alpha: 0.25),
-                    blurRadius: 22,
-                    spreadRadius: 1,
-                    offset: const Offset(0, 12),
-                  ),
-                ],
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: cat.accentColor.withValues(alpha: 0.20)),
               ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(28),
-                child: Stack(
-                  children: [
-                    Positioned(
-                      right: -34,
-                      top: -36,
-                      child: _CardCircle(
-                        size: 118,
-                        opacity: 0.12,
-                      ),
-                    ),
-                    Positioned(
-                      right: -42,
-                      bottom: -48,
-                      child: _CardCircle(
-                        size: 132,
-                        opacity: 0.08,
-                      ),
-                    ),
-                    Positioned(
-                      left: -34,
-                      bottom: -42,
-                      child: _CardCircle(
-                        size: 100,
-                        opacity: 0.06,
-                      ),
-                    ),
+              alignment: Alignment.center,
+              child: Icon(cat.icon, color: cat.accentColor, size: 24),
+            ),
+            const SizedBox(height: 8),
 
-                    Padding(
-                      padding: EdgeInsets.all(isCompact ? 14 : 17),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            height: isCompact ? 52 : 60,
-                            width: isCompact ? 52 : 60,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.17),
-                              borderRadius: BorderRadius.circular(22),
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.18),
-                                width: 1,
-                              ),
-                            ),
-                            child: Icon(
-                              category.icon,
-                              size: isCompact ? 28 : 32,
-                              color: Colors.white,
-                            ),
-                          ),
-
-                          const Spacer(),
-
-                          FittedBox(
-                            fit: BoxFit.scaleDown,
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              category.name,
-                              maxLines: 1,
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: isCompact ? 19 : 22,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: -0.5,
-                                height: 1,
-                              ),
-                            ),
-                          ),
-
-                          const SizedBox(height: 10),
-
-                          Row(
-                            children: [
-                              Flexible(
-                                child: Text(
-                                  "Shop Now",
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.86),
-                                    fontSize: isCompact ? 12 : 13,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 0.2,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              Icon(
-                                Icons.arrow_forward_rounded,
-                                color: Colors.white.withValues(alpha: 0.9),
-                                size: isCompact ? 15 : 16,
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+            // Category Name
+            Text(
+              cat.name,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(
+                color: slateDark,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
               ),
             ),
-          ),
-        );
-      },
-    );
-  }
-}
 
-// ================= DECORATIVE CIRCLE =================
-class _CardCircle extends StatelessWidget {
-  final double size;
-  final double opacity;
+            const SizedBox(height: 2),
 
-  const _CardCircle({
-    required this.size,
-    required this.opacity,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: size,
-      width: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: Colors.white.withValues(alpha: opacity),
+            // Tagline / Hint
+            Text(
+              cat.tagline,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.poppins(
+                color: slateMuted,
+                fontSize: 9.5,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
       ),
-    );
+    )
+        .animate()
+        .fadeIn(duration: 250.ms, delay: (index * 30).ms)
+        .scale(begin: const Offset(0.95, 0.95), end: const Offset(1, 1), duration: 250.ms);
   }
 }
+
+class CategoryItem {
+  final String name;
+  final String tagline;
+  final IconData icon;
+  final Color accentColor;
+  final List<Color> bgGradient;
+
+  const CategoryItem({
+    required this.name,
+    required this.tagline,
+    required this.icon,
+    required this.accentColor,
+    required this.bgGradient,
+  });
+}

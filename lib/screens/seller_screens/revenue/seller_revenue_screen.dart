@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../widgets/seller_bottom_nav.dart';
+import '../../../widgets/seller_shimmer_loading.dart';
 
 import 'seller_setup_account_screen.dart';
 import 'seller_withdraw_screen.dart';
@@ -246,7 +247,7 @@ class _SellerRevenueScreenState extends State<SellerRevenueScreen> {
         ],
       ),
       body: isLoading
-          ? const Center(child: CircularProgressIndicator(color: sapphireBlue))
+          ? const SellerRevenueShimmer()
           : RefreshIndicator(
               onRefresh: _fetchRevenueData,
               color: sapphireBlue,

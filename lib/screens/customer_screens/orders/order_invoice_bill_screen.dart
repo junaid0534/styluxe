@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../services/invoice_service.dart';
 import '../../../theme/app_theme.dart';
 
 class OrderInvoiceBillScreen extends StatefulWidget {
@@ -224,7 +224,7 @@ class _OrderInvoiceBillScreenState extends State<OrderInvoiceBillScreen> {
         toolbarHeight: 46.0,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.slateDark, size: 17),
+          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.slateDark, size: 21),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
@@ -237,24 +237,19 @@ class _OrderInvoiceBillScreenState extends State<OrderInvoiceBillScreen> {
         ),
         actions: [
           IconButton(
-            tooltip: "Copy Invoice Summary",
-            icon: const Icon(Icons.copy_rounded, color: AppColors.primary, size: 19),
-            onPressed: () {
-              Clipboard.setData(ClipboardData(
-                text: "StyLuxe Invoice #INV-${_orderNumber()}\n"
-                    "Order Ref: #${_orderNumber()}\n"
-                    "Date: ${_formatDate(order['created_at'])}\n"
-                    "Total Amount: Rs. ${total.toStringAsFixed(0)}\n"
-                    "Status: $status\n"
-                    "Address: ${order['address'] ?? 'N/A'}"
-              ));
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text("Invoice bill copied to clipboard!"),
-                  backgroundColor: AppColors.primary,
-                ),
-              );
-            },
+            tooltip: "Copy Receipt",
+            icon: const Icon(Icons.copy_rounded, color: AppColors.slateDark, size: 19),
+            onPressed: () => InvoiceService.copyInvoiceToClipboard(context, order),
+          ),
+          IconButton(
+            tooltip: "Share via WhatsApp",
+            icon: const Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFF10B981), size: 21),
+            onPressed: () => InvoiceService.shareViaWhatsApp(recipientPhone: order['phone'], order: order),
+          ),
+          IconButton(
+            tooltip: "Print / Save PDF",
+            icon: const Icon(Icons.print_rounded, color: AppColors.primary, size: 21),
+            onPressed: () => InvoiceService.printOrSavePdfInvoice(context: context, order: order),
           ),
           IconButton(
             tooltip: "Refresh",
@@ -859,23 +854,14 @@ class _OrderInvoiceBillScreenState extends State<OrderInvoiceBillScreen> {
                     children: [
                       Expanded(
                         child: SizedBox(
-                          height: 38,
-                          child: OutlinedButton.icon(
-                            onPressed: () {
-                              Clipboard.setData(ClipboardData(
-                                text: "StyLuxe Tax Invoice #${_orderNumber()}\nTotal Amount: Rs. ${total.toStringAsFixed(0)}\nStatus: $status"
-                              ));
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text("Invoice bill copied to clipboard!"),
-                                  backgroundColor: AppColors.primary,
-                                ),
-                              );
-                            },
-                            icon: const Icon(Icons.copy_rounded, color: AppColors.slateDark, size: 15),
-                            label: const Text("Copy Bill", style: TextStyle(color: AppColors.slateDark, fontWeight: FontWeight.w700, fontSize: 12.5)),
-                            style: OutlinedButton.styleFrom(
-                              side: const BorderSide(color: Color(0xFFCBD5E1)),
+                          height: 40,
+                          child: ElevatedButton.icon(
+                            onPressed: () => InvoiceService.shareViaWhatsApp(recipientPhone: order['phone'], order: order),
+                            icon: const Icon(Icons.chat_bubble_outline_rounded, color: Colors.white, size: 16),
+                            label: const Text("WhatsApp", style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 12.5)),
+                            style: ElevatedButton.styleFrom(
+                              elevation: 0,
+                              backgroundColor: const Color(0xFF10B981),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                               padding: EdgeInsets.zero,
                             ),
@@ -885,18 +871,11 @@ class _OrderInvoiceBillScreenState extends State<OrderInvoiceBillScreen> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: SizedBox(
-                          height: 38,
+                          height: 40,
                           child: ElevatedButton.icon(
-                            onPressed: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text("Downloading official Tax Invoice PDF..."),
-                                  backgroundColor: AppColors.primary,
-                                ),
-                              );
-                            },
-                            icon: const Icon(Icons.download_rounded, color: Colors.white, size: 15),
-                            label: const Text("Download PDF", style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 12.5)),
+                            onPressed: () => InvoiceService.printOrSavePdfInvoice(context: context, order: order),
+                            icon: const Icon(Icons.print_rounded, color: Colors.white, size: 16),
+                            label: const Text("Print / Save PDF", style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 12.5)),
                             style: ElevatedButton.styleFrom(
                               elevation: 0,
                               backgroundColor: AppColors.primary,

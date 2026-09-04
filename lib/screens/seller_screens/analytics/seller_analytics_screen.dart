@@ -3,9 +3,11 @@ import 'dart:math' as math;
 
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../widgets/seller_bottom_nav.dart';
+import '../../../widgets/seller_shimmer_loading.dart';
 
 class SellerAnalyticsScreen extends StatefulWidget {
   const SellerAnalyticsScreen({super.key});
@@ -18,6 +20,7 @@ class _SellerAnalyticsScreenState extends State<SellerAnalyticsScreen> {
   final supabase = Supabase.instance.client;
 
   bool isLoading = true;
+  bool _isNavVisible = true;
   String selectedFilter = "Monthly";
 
   final List<String> filters = [
@@ -76,6 +79,12 @@ class _SellerAnalyticsScreenState extends State<SellerAnalyticsScreen> {
 
   DateTime _endDate() {
     final now = DateTime.now();
+    if (selectedFilter == "Monthly") {
+      return DateTime(now.year, now.month + 1, 1);
+    }
+    if (selectedFilter == "Yearly") {
+      return DateTime(now.year + 1, 1, 1);
+    }
     return DateTime(now.year, now.month, now.day).add(
       const Duration(days: 1),
     );
@@ -559,7 +568,7 @@ class _SellerAnalyticsScreenState extends State<SellerAnalyticsScreen> {
     final labels = <String>[];
 
     if (selectedFilter == "Daily") {
-      for (int i = 0; i < 24; i += 3) {
+      for (int i = 0; i < 24; i++) {
         labels.add("${i.toString().padLeft(2, '0')}:00");
       }
       return labels;
@@ -577,7 +586,7 @@ class _SellerAnalyticsScreenState extends State<SellerAnalyticsScreen> {
     if (selectedFilter == "Monthly") {
       final now = DateTime.now();
       final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
-      for (int i = 1; i <= daysInMonth; i += 3) {
+      for (int i = 1; i <= daysInMonth; i++) {
         labels.add(i.toString().padLeft(2, '0'));
       }
       return labels;
@@ -587,8 +596,9 @@ class _SellerAnalyticsScreenState extends State<SellerAnalyticsScreen> {
   }
 
   double _bottomInterval(int length) {
-    if (length <= 8) return 1.0;
-    if (length <= 16) return 2.0;
+    if (length <= 7) return 1.0;
+    if (length <= 14) return 2.0;
+    if (length <= 24) return 4.0;
     if (length <= 31) return 5.0;
     return 1.0;
   }
@@ -637,222 +647,312 @@ class _SellerAnalyticsScreenState extends State<SellerAnalyticsScreen> {
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
         elevation: 0,
+        toolbarHeight: 42.0,
         centerTitle: true,
         iconTheme: const IconThemeData(color: slateDark),
         title: const Text(
-          "Sales Analytics",
+          "Analytics",
           style: TextStyle(
             color: slateDark,
             fontWeight: FontWeight.w900,
-            fontSize: 18,
+            fontSize: 17.5,
             letterSpacing: -0.3,
           ),
         ),
         actions: [
-          IconButton(
-            tooltip: "Refresh Data",
-            icon: const Icon(Icons.refresh_rounded, color: sapphireBlue),
-            onPressed: fetchAnalytics,
+          InkWell(
+            onTap: fetchAnalytics,
+            borderRadius: BorderRadius.circular(10),
+            child: Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              alignment: Alignment.center,
+              child: const Icon(Icons.refresh_rounded, color: sapphireBlue, size: 18),
+            ),
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: 14),
         ],
       ),
       body: isLoading
-          ? const Center(child: CircularProgressIndicator(color: sapphireBlue))
-          : RefreshIndicator(
-              onRefresh: fetchAnalytics,
-              color: sapphireBlue,
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 30),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 1100),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // 1. HERO REVENUE SUMMARY BANNER
-                        _executiveHeroBanner().animate().fadeIn(duration: 350.ms).slideY(begin: 0.05),
+          ? const SellerAnalyticsShimmer()
+          : NotificationListener<ScrollNotification>(
+              onNotification: (notification) {
+                if (notification is UserScrollNotification) {
+                  if (notification.direction == ScrollDirection.reverse) {
+                    if (_isNavVisible) setState(() => _isNavVisible = false);
+                  } else if (notification.direction == ScrollDirection.forward) {
+                    if (!_isNavVisible) setState(() => _isNavVisible = true);
+                  }
+                } else if (notification is ScrollEndNotification) {
+                  if (!_isNavVisible) setState(() => _isNavVisible = true);
+                }
+                return false;
+              },
+              child: RefreshIndicator(
+                onRefresh: fetchAnalytics,
+                color: sapphireBlue,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 1100),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // 1. HERO REVENUE SUMMARY BANNER
+                          _executiveHeroBanner().animate().fadeIn(duration: 350.ms).slideY(begin: 0.05),
 
-                        const SizedBox(height: 18),
+                          const SizedBox(height: 10),
 
-                        // 2. SEGMENTED FILTER BAR (Daily, Weekly, Monthly, Yearly)
-                        _segmentedFilterBar(),
+                          // 2. SEGMENTED FILTER BAR (Daily, Weekly, Monthly, Yearly)
+                          _segmentedFilterBar(),
 
-                        const SizedBox(height: 18),
+                          const SizedBox(height: 10),
 
-                        // 3. KPI METRICS GRID
-                        GridView.count(
-                          crossAxisCount: kpiGrid,
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          crossAxisSpacing: 10,
-                          mainAxisSpacing: 10,
-                          childAspectRatio: width >= 1100 ? 2.8 : (width >= 700 ? 2.4 : 1.85),
-                          children: [
-                            _kpiCard(
-                              title: "Total Revenue",
-                              value: "Rs. ${totalRevenue.toStringAsFixed(0)}",
-                            ),
-                            _kpiCard(
-                              title: "Total Orders",
-                              value: totalOrders.toString(),
-                            ),
-                            _kpiCard(
-                              title: "Items Sold",
-                              value: totalItemsSold.toString(),
-                            ),
-                            _kpiCard(
-                              title: "Avg Order Value",
-                              value: "Rs. ${averageOrderValue.toStringAsFixed(0)}",
-                            ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 22),
-
-                        if (orders.isEmpty)
-                          _emptyAnalyticsView()
-                        else ...[
-                          // 4. REVENUE TREND LINE CHART
-                          _chartCard(
-                            title: "Revenue Trend",
-                            subtitle: "Real-time earnings curve for $selectedFilter period",
-                            child: _revenueLineChart(),
+                          // 3. COMPACT PROFESSIONAL KPI METRICS GRID
+                          GridView.count(
+                            crossAxisCount: kpiGrid,
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            crossAxisSpacing: 8,
+                            mainAxisSpacing: 8,
+                            childAspectRatio: width >= 1100 ? 3.4 : (width >= 700 ? 3.0 : 2.4),
+                            children: [
+                              _kpiCard(
+                                title: "Total Revenue",
+                                value: "Rs. ${totalRevenue.toStringAsFixed(0)}",
+                                icon: Icons.payments_rounded,
+                                iconColor: sapphireBlue,
+                                iconBg: const Color(0xFFEFF6FF),
+                              ),
+                              _kpiCard(
+                                title: "Total Orders",
+                                value: totalOrders.toString(),
+                                icon: Icons.receipt_long_rounded,
+                                iconColor: const Color(0xFF10B981),
+                                iconBg: const Color(0xFFECFDF5),
+                              ),
+                              _kpiCard(
+                                title: "Items Sold",
+                                value: totalItemsSold.toString(),
+                                icon: Icons.shopping_bag_rounded,
+                                iconColor: const Color(0xFF6366F1),
+                                iconBg: const Color(0xFFEEF2FF),
+                              ),
+                              _kpiCard(
+                                title: "Avg Order Value",
+                                value: "Rs. ${averageOrderValue.toStringAsFixed(0)}",
+                                icon: Icons.analytics_rounded,
+                                iconColor: const Color(0xFF8B5CF6),
+                                iconBg: const Color(0xFFF5F3FF),
+                              ),
+                            ],
                           ),
 
-                          const SizedBox(height: 18),
+                          const SizedBox(height: 10),
 
-                          // 5. ORDERS TREND BAR CHART
-                          _chartCard(
-                            title: "Orders Volume Trend",
-                            subtitle: "Completed order volume breakdown",
-                            child: _ordersBarChart(),
-                          ),
+                          if (orders.isEmpty)
+                            _emptyAnalyticsView()
+                          else ...[
+                            // 4. REVENUE TREND LINE CHART
+                            _chartCard(
+                              title: "Revenue Trend",
+                              subtitle: "Real-time earnings curve for $selectedFilter period",
+                              child: _revenueLineChart(),
+                            ),
 
-                          const SizedBox(height: 18),
+                            const SizedBox(height: 10),
 
-                          // 6. DISTRIBUTION DONUT CHARTS (TYPES & AUDIENCE)
-                          LayoutBuilder(
-                            builder: (context, constraints) {
-                              final isWide = constraints.maxWidth >= 850;
+                            // 5. ORDERS TREND BAR CHART
+                            _chartCard(
+                              title: "Orders Volume Trend",
+                              subtitle: "Completed order volume breakdown",
+                              child: _ordersBarChart(),
+                            ),
 
-                              if (isWide) {
-                                return Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
+                            const SizedBox(height: 10),
+
+                            // 6. DISTRIBUTION DONUT CHARTS (TYPES & AUDIENCE)
+                            LayoutBuilder(
+                              builder: (context, constraints) {
+                                final isWide = constraints.maxWidth >= 850;
+
+                                if (isWide) {
+                                  return Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Expanded(
+                                        child: _chartCard(
+                                          title: "Product Category Mix",
+                                          subtitle: "Sales breakdown by apparel type",
+                                          height: 155,
+                                          child: _donutChart(productTypeSales, "Type Mix"),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: _chartCard(
+                                          title: "Audience Demographics",
+                                          subtitle: "Men, Women, Kids & Unisex mix",
+                                          height: 155,
+                                          child: _donutChart(audienceSales, "Audience"),
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                }
+
+                                return Column(
                                   children: [
-                                    Expanded(
-                                      child: _chartCard(
-                                        title: "Product Category Mix",
-                                        subtitle: "Sales breakdown by apparel type",
-                                        child: _donutChart(productTypeSales, "Type Mix"),
-                                      ),
+                                    _chartCard(
+                                      title: "Product Category Mix",
+                                      subtitle: "Sales breakdown by apparel type",
+                                      height: 155,
+                                      child: _donutChart(productTypeSales, "Type Mix"),
                                     ),
-                                    const SizedBox(width: 16),
-                                    Expanded(
-                                      child: _chartCard(
-                                        title: "Audience Demographics",
-                                        subtitle: "Men, Women, Kids & Unisex mix",
-                                        child: _donutChart(audienceSales, "Audience"),
-                                      ),
+                                    const SizedBox(height: 10),
+                                    _chartCard(
+                                      title: "Audience Demographics",
+                                      subtitle: "Men, Women, Kids & Unisex mix",
+                                      height: 155,
+                                      child: _donutChart(audienceSales, "Audience"),
                                     ),
                                   ],
                                 );
-                              }
+                              },
+                            ),
 
-                              return Column(
-                                children: [
-                                  _chartCard(
-                                    title: "Product Category Mix",
-                                    subtitle: "Sales breakdown by apparel type",
-                                    child: _donutChart(productTypeSales, "Type Mix"),
-                                  ),
-                                  const SizedBox(height: 18),
-                                  _chartCard(
-                                    title: "Audience Demographics",
-                                    subtitle: "Men, Women, Kids & Unisex mix",
-                                    child: _donutChart(audienceSales, "Audience"),
-                                  ),
-                                ],
-                              );
-                            },
-                          ),
+                            const SizedBox(height: 10),
 
-                          const SizedBox(height: 18),
-
-                          // 7. TOP SELLING PRODUCTS LEADERBOARD
-                          _topProductsLeaderboard(),
+                            // 7. TOP SELLING PRODUCTS LEADERBOARD
+                            _topProductsLeaderboard(),
+                          ],
                         ],
-                      ],
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
-      bottomNavigationBar: const SellerBottomNav(currentIndex: 3),
+      bottomNavigationBar: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+        height: _isNavVisible ? (58.0 + MediaQuery.of(context).padding.bottom) : 0.0,
+        child: Wrap(
+          children: [
+            AnimatedSlide(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+              offset: _isNavVisible ? Offset.zero : const Offset(0, 1.0),
+              child: const SellerBottomNav(currentIndex: 3),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
   // ================= EXECUTIVE HERO BANNER =================
-  // ================= EXECUTIVE HERO BANNER =================
   Widget _executiveHeroBanner() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF2563EB), Color(0xFF1D4ED8)],
+          colors: [Color(0xFF1E3A8A), Color(0xFF2563EB), Color(0xFF3B82F6)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: sapphireBlue.withValues(alpha: 0.3),
-            blurRadius: 16,
+            color: sapphireBlue.withValues(alpha: 0.28),
+            blurRadius: 18,
             offset: const Offset(0, 6),
           ),
         ],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Stack(
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          Positioned(
+            top: -20,
+            right: -15,
+            child: Container(
+              width: 90,
+              height: 90,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withValues(alpha: 0.08),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 12)
+                              .animate(onPlay: (c) => c.repeat(reverse: true))
+                              .scale(begin: const Offset(0.85, 0.85), end: const Offset(1.15, 1.15), duration: 1200.ms),
+                          const SizedBox(width: 4),
+                          const Text(
+                            "EXECUTIVE DASHBOARD",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        "Sales & Performance",
+                        style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: -0.3),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        "Live telemetry for $selectedFilter period",
+                        style: const TextStyle(color: Color(0xFFDBEAFE), fontSize: 11, fontWeight: FontWeight.w500),
+                      ),
+                    ],
+                  ),
+                ),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(16),
+                    color: const Color(0xFF10B981).withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFF34D399), width: 1),
                   ),
-                  child: const Text(
-                    "ANALYTICS OVERVIEW",
-                    style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 0.5),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 6,
+                        height: 6,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Color(0xFF34D399),
+                        ),
+                      ).animate(onPlay: (c) => c.repeat(reverse: true)).scale(begin: const Offset(0.8, 0.8), end: const Offset(1.3, 1.3), duration: 1000.ms),
+                      const SizedBox(width: 5),
+                      const Text("LIVE", style: TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.w900)),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 10),
-                const Text(
-                  "Sales & Performance",
-                  style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900, letterSpacing: -0.4),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
-              color: const Color(0xFF10B981).withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFF34D399), width: 1),
-            ),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircleAvatar(radius: 3, backgroundColor: Color(0xFF34D399)),
-                SizedBox(width: 5),
-                Text("LIVE", style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w900)),
               ],
             ),
           ),
@@ -864,13 +964,11 @@ class _SellerAnalyticsScreenState extends State<SellerAnalyticsScreen> {
   // ================= SEGMENTED FILTER BAR =================
   Widget _segmentedFilterBar() {
     return Container(
-      padding: const EdgeInsets.all(4),
+      padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 3)),
-        ],
+        color: const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
       child: Row(
         children: filters.map((filter) {
@@ -882,21 +980,30 @@ class _SellerAnalyticsScreenState extends State<SellerAnalyticsScreen> {
                 setState(() => selectedFilter = filter);
                 fetchAnalytics();
               },
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(11),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                height: 38,
+                height: 34,
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: isSelected ? sapphireBlue : Colors.transparent,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(11),
+                  boxShadow: isSelected
+                      ? [
+                          BoxShadow(
+                            color: sapphireBlue.withValues(alpha: 0.25),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ]
+                      : null,
                 ),
                 child: Text(
                   filter,
                   style: TextStyle(
                     color: isSelected ? Colors.white : slateMuted,
-                    fontSize: 12.5,
-                    fontWeight: isSelected ? FontWeight.w900 : FontWeight.w700,
+                    fontSize: 12,
+                    fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
                   ),
                 ),
               ),
@@ -907,37 +1014,70 @@ class _SellerAnalyticsScreenState extends State<SellerAnalyticsScreen> {
     );
   }
 
-  // ================= SLEEK ICON-FREE COMPACT KPI CARD =================
+  // ================= SLEEK COMPACT PROFESSIONAL KPI CARD =================
   Widget _kpiCard({
     required String title,
     required String value,
+    required IconData icon,
+    required Color iconColor,
+    required Color iconBg,
   }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0), width: 1.2),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 2)),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.025),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
+      child: Row(
         children: [
-          Text(
-            title.toUpperCase(),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: slateMuted, fontSize: 10, fontWeight: FontWeight.w800, letterSpacing: 0.4),
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: iconBg,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            alignment: Alignment.center,
+            child: Icon(icon, color: iconColor, size: 16),
           ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: slateDark, fontSize: 16.5, fontWeight: FontWeight.w900, letterSpacing: -0.4),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: slateDark,
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.3,
+                  ),
+                ),
+                const SizedBox(height: 1),
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: slateMuted,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -949,26 +1089,27 @@ class _SellerAnalyticsScreenState extends State<SellerAnalyticsScreen> {
     required String title,
     required String subtitle,
     required Widget child,
-    double height = 210,
+    double height = 165,
   }) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 14, offset: const Offset(0, 4)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 2)),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(title, style: const TextStyle(color: slateDark, fontSize: 15.5, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 2),
-          Text(subtitle, style: const TextStyle(color: slateMuted, fontSize: 11.5, fontWeight: FontWeight.w500)),
-          const SizedBox(height: 14),
+          Text(title, style: const TextStyle(color: slateDark, fontSize: 14.5, fontWeight: FontWeight.w900)),
+          const SizedBox(height: 1),
+          Text(subtitle, style: const TextStyle(color: slateMuted, fontSize: 11, fontWeight: FontWeight.w500)),
+          const SizedBox(height: 6),
           SizedBox(
             height: height,
             child: child,
@@ -1017,24 +1158,24 @@ class _SellerAnalyticsScreenState extends State<SellerAnalyticsScreen> {
           leftTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
-              reservedSize: 42,
+              reservedSize: 36,
               getTitlesWidget: (value, meta) {
                 String txt = value >= 1000 ? "${(value / 1000).toStringAsFixed(0)}k" : value.toStringAsFixed(0);
-                return Text(txt, style: const TextStyle(color: slateMuted, fontSize: 10, fontWeight: FontWeight.w700));
+                return Text(txt, style: const TextStyle(color: slateMuted, fontSize: 9.5, fontWeight: FontWeight.w700));
               },
             ),
           ),
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
-              reservedSize: 28,
+              reservedSize: 20,
               interval: _bottomInterval(entries.length),
               getTitlesWidget: (value, meta) {
                 final index = value.toInt();
                 if (index < 0 || index >= entries.length) return const SizedBox.shrink();
                 return Padding(
-                  padding: const EdgeInsets.only(top: 6),
-                  child: Text(entries[index].key, style: const TextStyle(color: slateMuted, fontSize: 10, fontWeight: FontWeight.w700)),
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(entries[index].key, style: const TextStyle(color: slateMuted, fontSize: 9.5, fontWeight: FontWeight.w700)),
                 );
               },
             ),
@@ -1044,13 +1185,13 @@ class _SellerAnalyticsScreenState extends State<SellerAnalyticsScreen> {
           LineChartBarData(
             spots: List.generate(entries.length, (index) => FlSpot(index.toDouble(), entries[index].value)),
             isCurved: true,
-            barWidth: 3.5,
+            barWidth: 3,
             color: sapphireBlue,
             belowBarData: BarAreaData(
               show: true,
               gradient: LinearGradient(
                 colors: [
-                  sapphireBlue.withValues(alpha: 0.25),
+                  sapphireBlue.withValues(alpha: 0.20),
                   sapphireBlue.withValues(alpha: 0.0),
                 ],
                 begin: Alignment.topCenter,
@@ -1100,23 +1241,23 @@ class _SellerAnalyticsScreenState extends State<SellerAnalyticsScreen> {
           leftTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
-              reservedSize: 28,
+              reservedSize: 24,
               getTitlesWidget: (value, meta) {
-                return Text(value.toInt().toString(), style: const TextStyle(color: slateMuted, fontSize: 10, fontWeight: FontWeight.w700));
+                return Text(value.toInt().toString(), style: const TextStyle(color: slateMuted, fontSize: 9.5, fontWeight: FontWeight.w700));
               },
             ),
           ),
           bottomTitles: AxisTitles(
             sideTitles: SideTitles(
               showTitles: true,
-              reservedSize: 28,
+              reservedSize: 20,
               interval: _bottomInterval(entries.length),
               getTitlesWidget: (value, meta) {
                 final index = value.toInt();
                 if (index < 0 || index >= entries.length) return const SizedBox.shrink();
                 return Padding(
-                  padding: const EdgeInsets.only(top: 6),
-                  child: Text(entries[index].key, style: const TextStyle(color: slateMuted, fontSize: 10, fontWeight: FontWeight.w700)),
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(entries[index].key, style: const TextStyle(color: slateMuted, fontSize: 9.5, fontWeight: FontWeight.w700)),
                 );
               },
             ),
@@ -1128,8 +1269,8 @@ class _SellerAnalyticsScreenState extends State<SellerAnalyticsScreen> {
             barRods: [
               BarChartRodData(
                 toY: entries[index].value.toDouble(),
-                width: 14,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+                width: 12,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(5)),
                 gradient: const LinearGradient(
                   colors: [Color(0xFF3B82F6), Color(0xFF1D4ED8)],
                   begin: Alignment.topCenter,
@@ -1143,7 +1284,7 @@ class _SellerAnalyticsScreenState extends State<SellerAnalyticsScreen> {
     );
   }
 
-  // ================= DONUT DISTRIBUTION CHART WITH LEFT/SIDE LEGEND (NO PERCENTAGES IN LEGEND) =================
+  // ================= DONUT DISTRIBUTION CHART WITH LEFT/SIDE LEGEND =================
   Widget _donutChart(Map<String, int> dataMap, String centerLabel) {
     if (dataMap.isEmpty) return _emptyAnalyticsView();
 
@@ -1153,7 +1294,7 @@ class _SellerAnalyticsScreenState extends State<SellerAnalyticsScreen> {
 
     return Row(
       children: [
-        // 1. Left / Side Legend List (Color Dot + Name ONLY - NO PERCENTAGE)
+        // 1. Left / Side Legend List
         Expanded(
           flex: 4,
           child: Column(
@@ -1164,21 +1305,21 @@ class _SellerAnalyticsScreenState extends State<SellerAnalyticsScreen> {
               final color = colors[index % colors.length];
 
               return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
+                padding: const EdgeInsets.symmetric(vertical: 2.5),
                 child: Row(
                   children: [
                     Container(
-                      width: 9,
-                      height: 9,
+                      width: 8,
+                      height: 8,
                       decoration: BoxDecoration(color: color, shape: BoxShape.circle),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 6),
                     Expanded(
                       child: Text(
                         item.key,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: slateDark, fontSize: 12, fontWeight: FontWeight.w800),
+                        style: const TextStyle(color: slateDark, fontSize: 11, fontWeight: FontWeight.w800),
                       ),
                     ),
                   ],
@@ -1188,20 +1329,20 @@ class _SellerAnalyticsScreenState extends State<SellerAnalyticsScreen> {
           ),
         ),
 
-        const SizedBox(width: 8),
+        const SizedBox(width: 6),
 
-        // 2. Donut Pie Chart (PERCENTAGES STAY IN THE SLICES HERE)
+        // 2. Donut Pie Chart
         Expanded(
           flex: 5,
           child: SizedBox(
-            height: 175,
+            height: 135,
             child: Stack(
               alignment: Alignment.center,
               children: [
                 PieChart(
                   PieChartData(
-                    sectionsSpace: 2,
-                    centerSpaceRadius: 36,
+                    sectionsSpace: 1.5,
+                    centerSpaceRadius: 26,
                     sections: List.generate(entries.length, (index) {
                       final item = entries[index];
                       final color = colors[index % colors.length];
@@ -1211,8 +1352,8 @@ class _SellerAnalyticsScreenState extends State<SellerAnalyticsScreen> {
                         color: color,
                         value: item.value.toDouble(),
                         title: "$pct%",
-                        radius: 32,
-                        titleStyle: const TextStyle(color: Colors.white, fontSize: 9.5, fontWeight: FontWeight.w900),
+                        radius: 24,
+                        titleStyle: const TextStyle(color: Colors.white, fontSize: 8.5, fontWeight: FontWeight.w900),
                       );
                     }),
                   ),
@@ -1220,8 +1361,8 @@ class _SellerAnalyticsScreenState extends State<SellerAnalyticsScreen> {
                 Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text("$totalUnits", style: const TextStyle(color: slateDark, fontSize: 16, fontWeight: FontWeight.w900)),
-                    Text(centerLabel, style: const TextStyle(color: slateMuted, fontSize: 9, fontWeight: FontWeight.w700)),
+                    Text("$totalUnits", style: const TextStyle(color: slateDark, fontSize: 14.5, fontWeight: FontWeight.w900)),
+                    Text(centerLabel, style: const TextStyle(color: slateMuted, fontSize: 8.5, fontWeight: FontWeight.w700)),
                   ],
                 ),
               ],
@@ -1238,12 +1379,13 @@ class _SellerAnalyticsScreenState extends State<SellerAnalyticsScreen> {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 14, offset: const Offset(0, 4)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 2)),
         ],
       ),
       child: Column(
@@ -1252,11 +1394,11 @@ class _SellerAnalyticsScreenState extends State<SellerAnalyticsScreen> {
           const Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text("Top Selling Products", style: TextStyle(color: slateDark, fontSize: 16, fontWeight: FontWeight.w900)),
-              Text("Units Sold", style: TextStyle(color: slateMuted, fontSize: 12, fontWeight: FontWeight.w700)),
+              Text("Top Selling Products", style: TextStyle(color: slateDark, fontSize: 14.5, fontWeight: FontWeight.w900)),
+              Text("Units Sold", style: TextStyle(color: slateMuted, fontSize: 11, fontWeight: FontWeight.w700)),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 8),
 
           if (entries.isEmpty)
             _emptyAnalyticsView()
@@ -1265,7 +1407,7 @@ class _SellerAnalyticsScreenState extends State<SellerAnalyticsScreen> {
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount: entries.length,
-              separatorBuilder: (ctx, idx) => const SizedBox(height: 12),
+              separatorBuilder: (ctx, idx) => const SizedBox(height: 8),
               itemBuilder: (context, index) {
                 final item = entries[index];
                 final rank = index + 1;
@@ -1276,8 +1418,8 @@ class _SellerAnalyticsScreenState extends State<SellerAnalyticsScreen> {
                 return Row(
                   children: [
                     Container(
-                      width: 28,
-                      height: 28,
+                      width: 24,
+                      height: 24,
                       decoration: BoxDecoration(
                         color: rank == 1 ? const Color(0xFFFEF3C7) : sapphireLight,
                         shape: BoxShape.circle,
@@ -1287,13 +1429,13 @@ class _SellerAnalyticsScreenState extends State<SellerAnalyticsScreen> {
                           "#$rank",
                           style: TextStyle(
                             color: rank == 1 ? const Color(0xFFD97706) : sapphireBlue,
-                            fontSize: 11,
+                            fontSize: 10,
                             fontWeight: FontWeight.w900,
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1302,14 +1444,14 @@ class _SellerAnalyticsScreenState extends State<SellerAnalyticsScreen> {
                             item.key,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(color: slateDark, fontSize: 13, fontWeight: FontWeight.w800),
+                            style: const TextStyle(color: slateDark, fontSize: 12.5, fontWeight: FontWeight.w800),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 3),
                           ClipRRect(
-                            borderRadius: BorderRadius.circular(4),
+                            borderRadius: BorderRadius.circular(3),
                             child: LinearProgressIndicator(
                               value: progress,
-                              minHeight: 5,
+                              minHeight: 4,
                               backgroundColor: const Color(0xFFF1F5F9),
                               color: rank == 1 ? const Color(0xFFF59E0B) : sapphireBlue,
                             ),
@@ -1317,10 +1459,10 @@ class _SellerAnalyticsScreenState extends State<SellerAnalyticsScreen> {
                         ],
                       ),
                     ),
-                    const SizedBox(width: 14),
+                    const SizedBox(width: 12),
                     Text(
                       "$qty units",
-                      style: const TextStyle(color: slateDark, fontSize: 12.5, fontWeight: FontWeight.w900),
+                      style: const TextStyle(color: slateDark, fontSize: 12, fontWeight: FontWeight.w900),
                     ),
                   ],
                 );

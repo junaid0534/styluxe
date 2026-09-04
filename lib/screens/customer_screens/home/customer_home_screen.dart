@@ -467,9 +467,9 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
                     },
                     childCount: filteredProducts.length,
                   ),
-                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                    maxCrossAxisExtent: 130,
-                    mainAxisExtent: 172,
+                  gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+                    maxCrossAxisExtent: MediaQuery.of(context).size.width >= 700 ? 180 : 135,
+                    mainAxisExtent: MediaQuery.of(context).size.width >= 700 ? 230 : 178,
                     crossAxisSpacing: 8,
                     mainAxisSpacing: 8,
                   ),
@@ -882,11 +882,9 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
           children: [
-            // Dedicated Full Fit AspectRatio Image Box
-            AspectRatio(
-              aspectRatio: 1.05,
+            // Dedicated Full Fit Flexible Image Box (Adaptive to any screen size)
+            Expanded(
               child: Container(
                 decoration: const BoxDecoration(
                   color: Color(0xFFF1F5F9),

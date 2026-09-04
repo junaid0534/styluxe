@@ -2,6 +2,10 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../services/courier_service.dart';
+import '../../../services/inventory_service.dart';
+import '../../../services/invoice_service.dart';
+import '../../../services/realtime_notification_service.dart';
 import '../../../theme/app_theme.dart';
 import 'order_invoice_bill_screen.dart';
 import 'order_tracking_screen.dart';
@@ -355,7 +359,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         toolbarHeight: 46.0,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.slateDark, size: 17),
+          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.slateDark, size: 21),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
@@ -368,8 +372,18 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         ),
         actions: [
           IconButton(
+            tooltip: "Share Receipt on WhatsApp",
+            icon: const Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFF10B981), size: 20),
+            onPressed: () => InvoiceService.shareViaWhatsApp(recipientPhone: order['phone'], order: order),
+          ),
+          IconButton(
+            tooltip: "Print / Save PDF",
+            icon: const Icon(Icons.print_rounded, color: AppColors.primary, size: 20),
+            onPressed: () => InvoiceService.printOrSavePdfInvoice(context: context, order: order),
+          ),
+          IconButton(
             tooltip: "View Bill",
-            icon: const Icon(Icons.receipt_outlined, color: AppColors.primary, size: 20),
+            icon: const Icon(Icons.receipt_outlined, color: AppColors.slateDark, size: 20),
             onPressed: () => _navigateToBillScreen(context),
           ),
           IconButton(
@@ -576,7 +590,7 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
-                                      _formatDeliveryDateWindow(order['created_at']),
+                                      order['estimated_delivery']?.toString() ?? _formatDeliveryDateWindow(order['created_at']),
                                       style: const TextStyle(
                                         color: AppColors.slateDark,
                                         fontSize: 12,
@@ -588,6 +602,63 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                               ),
                             ],
                           ),
+
+                          if (order['courier_name'] != null || order['tracking_number'] != null) ...[
+                            const SizedBox(height: 10),
+                            const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                            const SizedBox(height: 10),
+
+                            Builder(builder: (context) {
+                              final cName = order['courier_name']?.toString() ?? 'TCS Express';
+                              final tNum = order['tracking_number']?.toString() ?? '';
+                              final partner = CourierService.getPartner(cName);
+
+                              return Column(
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(partner.icon, color: partner.brandColor, size: 16),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          "${partner.name} ${tNum.isNotEmpty ? '• #$tNum' : ''}",
+                                          style: TextStyle(
+                                            color: partner.brandColor,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w800,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: OutlinedButton.icon(
+                                      style: OutlinedButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(vertical: 8),
+                                        side: BorderSide(color: partner.brandColor.withValues(alpha: 0.4)),
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                      ),
+                                      onPressed: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) => OrderTrackingScreen(order: order),
+                                          ),
+                                        );
+                                      },
+                                      icon: Icon(Icons.local_shipping_outlined, size: 15, color: partner.brandColor),
+                                      label: Text(
+                                        "Live Track Order",
+                                        style: TextStyle(color: partner.brandColor, fontWeight: FontWeight.w800, fontSize: 12),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            }),
+                          ],
                         ],
                       ),
                     ),
@@ -803,13 +874,40 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                                               ),
                                             ),
                                             const SizedBox(height: 2),
-                                            Text(
-                                              "x$qty",
-                                              style: const TextStyle(
-                                                color: AppColors.slateMuted,
-                                                fontSize: 11.5,
-                                                fontWeight: FontWeight.w600,
-                                              ),
+                                            Row(
+                                              children: [
+                                                Text(
+                                                  "x$qty",
+                                                  style: const TextStyle(
+                                                    color: AppColors.slateMuted,
+                                                    fontSize: 11.5,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                                if (([
+                                                  if (itm['selected_color'] != null && itm['selected_color'].toString().isNotEmpty) itm['selected_color'].toString(),
+                                                  if (itm['selected_size'] != null && itm['selected_size'].toString().isNotEmpty) "Size: ${itm['selected_size']}",
+                                                ].isNotEmpty)) ...[
+                                                  const SizedBox(width: 6),
+                                                  Text("•", style: TextStyle(color: AppColors.slateMuted.withValues(alpha: 0.5), fontSize: 11)),
+                                                  const SizedBox(width: 6),
+                                                  Flexible(
+                                                    child: Text(
+                                                      [
+                                                        if (itm['selected_color'] != null && itm['selected_color'].toString().isNotEmpty) itm['selected_color'].toString(),
+                                                        if (itm['selected_size'] != null && itm['selected_size'].toString().isNotEmpty) "Size: ${itm['selected_size']}",
+                                                      ].join(" • "),
+                                                      maxLines: 1,
+                                                      overflow: TextOverflow.ellipsis,
+                                                      style: const TextStyle(
+                                                        color: AppColors.primary,
+                                                        fontSize: 10.5,
+                                                        fontWeight: FontWeight.w700,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ],
                                             ),
                                           ],
                                         ),
@@ -1284,6 +1382,9 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                                     }).eq('id', orderId).select();
                                   }
 
+                                  // Reverse-count / restore product stock
+                                  await InventoryService.restoreStockForOrder(orderId.toString());
+
                                   if (mounted) {
                                     setState(() {
                                       order['status'] = 'Cancelled';
@@ -1294,35 +1395,13 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                                   // Add Notification safely with ultra-fallback
                                   final currentUser = supabase.auth.currentUser;
                                   if (currentUser != null) {
-                                    try {
-                                      await supabase.from('notifications').insert({
-                                        'user_id': currentUser.id,
-                                        'order_id': orderId,
-                                        'title': 'Order Cancelled',
-                                        'message': 'Your order #${_orderNumber()} was successfully cancelled.',
-                                        'type': 'order',
-                                        'is_read': false,
-                                      });
-                                    } catch (_) {
-                                      try {
-                                        await supabase.from('notifications').insert({
-                                          'user_id': currentUser.id,
-                                          'title': 'Order Cancelled',
-                                          'message': 'Your order #${_orderNumber()} was successfully cancelled.',
-                                          'is_read': false,
-                                        });
-                                      } catch (_) {
-                                        try {
-                                          await supabase.from('notifications').insert({
-                                            'user_id': currentUser.id,
-                                            'title': 'Order Cancelled',
-                                            'message': 'Your order #${_orderNumber()} was successfully cancelled.',
-                                          });
-                                        } catch (finalErr) {
-                                          debugPrint("Notification silent fallback: $finalErr");
-                                        }
-                                      }
-                                    }
+                                    await RealtimeNotificationService.sendNotification(
+                                      userId: currentUser.id,
+                                      title: '❌ Order Cancelled',
+                                      message: 'Your order #${_orderNumber()} was successfully cancelled.',
+                                      type: 'order',
+                                      additionalData: {'order_id': orderId},
+                                    );
                                   }
 
                                   if (context.mounted) {

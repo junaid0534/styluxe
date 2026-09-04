@@ -140,6 +140,37 @@ class _SellerEditProfileScreenState extends State<SellerEditProfileScreen> {
     }
   }
 
+  // ================= DIRECT SAFE UPLOAD TO EXISTING BUCKETS =================
+  Future<String?> _uploadImageSafely({
+    required String folder,
+    required String fileName,
+    required Uint8List bytes,
+  }) async {
+    // Uses the 2 existing public buckets in your Supabase project (avatars, product_images)
+    final candidateBuckets = ['avatars', 'product_images'];
+
+    for (final bucket in candidateBuckets) {
+      try {
+        final path = '$folder/$fileName';
+        await supabase.storage.from(bucket).uploadBinary(
+              path,
+              bytes,
+              fileOptions: const FileOptions(
+                contentType: 'image/jpeg',
+                upsert: true,
+              ),
+            );
+        final publicUrl = supabase.storage.from(bucket).getPublicUrl(path);
+        if (publicUrl.isNotEmpty) {
+          return publicUrl;
+        }
+      } catch (e) {
+        debugPrint("Bucket '$bucket' avatar upload attempt: $e");
+      }
+    }
+    return null;
+  }
+
   // ================= SAVE PROFILE CHANGES =================
   Future<void> _saveProfileChanges() async {
     if (!_formKey.currentState!.validate()) return;
@@ -153,15 +184,13 @@ class _SellerEditProfileScreenState extends State<SellerEditProfileScreen> {
 
       // Upload avatar if picked
       if (_pickedImage != null && _imageBytes != null) {
-        try {
-          final fileName = 'avatar_${user.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-          await supabase.storage.from('store_assets').uploadBinary(
-                fileName,
-                _imageBytes!,
-                fileOptions: const FileOptions(contentType: 'image/jpeg', upsert: true),
-              );
-          uploadedUrl = supabase.storage.from('store_assets').getPublicUrl(fileName);
-        } catch (_) {}
+        final fileName = '${user.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        final res = await _uploadImageSafely(
+          folder: 'avatars',
+          fileName: fileName,
+          bytes: _imageBytes!,
+        );
+        if (res != null) uploadedUrl = res;
       }
 
       // 1. Update Auth User Metadata

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../services/invoice_service.dart';
 
 class SellerOrderInvoiceScreen extends StatelessWidget {
   final Map<String, dynamic> order;
@@ -50,6 +51,24 @@ class SellerOrderInvoiceScreen extends StatelessWidget {
           "Official Order Invoice",
           style: TextStyle(color: slateDark, fontSize: 18, fontWeight: FontWeight.w900),
         ),
+        actions: [
+          IconButton(
+            tooltip: "Copy Receipt Text",
+            icon: const Icon(Icons.copy_rounded, color: slateDark, size: 20),
+            onPressed: () => InvoiceService.copyInvoiceToClipboard(context, order),
+          ),
+          IconButton(
+            tooltip: "Share on WhatsApp",
+            icon: const Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFF10B981), size: 22),
+            onPressed: () => InvoiceService.shareViaWhatsApp(recipientPhone: phone, order: order),
+          ),
+          IconButton(
+            tooltip: "Print / Save PDF",
+            icon: const Icon(Icons.print_rounded, color: sapphireBlue, size: 22),
+            onPressed: () => InvoiceService.printOrSavePdfInvoice(context: context, order: order),
+          ),
+          const SizedBox(width: 4),
+        ],
       ),
       body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),
@@ -326,15 +345,16 @@ class SellerOrderInvoiceScreen extends StatelessWidget {
           child: Row(
             children: [
               Expanded(
-                child: OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: sapphireBlue, width: 1.5),
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF10B981),
+                    elevation: 0,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close_rounded, color: sapphireBlue, size: 18),
-                  label: const Text("CLOSE INVOICE", style: TextStyle(color: sapphireBlue, fontSize: 13, fontWeight: FontWeight.w900)),
+                  onPressed: () => InvoiceService.shareViaWhatsApp(recipientPhone: phone, order: order),
+                  icon: const Icon(Icons.chat_bubble_outline_rounded, color: Colors.white, size: 18),
+                  label: const Text("WHATSAPP SHARE", style: TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w900)),
                 ),
               ),
               const SizedBox(width: 12),
@@ -342,17 +362,13 @@ class SellerOrderInvoiceScreen extends StatelessWidget {
                 child: ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: sapphireBlue,
-                    elevation: 2,
+                    elevation: 0,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                   ),
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text("Receipt saved / ready for printing! 🖨️"), backgroundColor: Color(0xFF10B981)),
-                    );
-                  },
+                  onPressed: () => InvoiceService.printOrSavePdfInvoice(context: context, order: order),
                   icon: const Icon(Icons.print_rounded, color: Colors.white, size: 18),
-                  label: const Text("PRINT RECEIPT", style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w900)),
+                  label: const Text("PRINT / SAVE PDF", style: TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.w900)),
                 ),
               ),
             ],

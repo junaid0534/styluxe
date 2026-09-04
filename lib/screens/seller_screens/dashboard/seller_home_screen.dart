@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../services/session_service.dart';
 import '../../chat/inbox_screen.dart';
 import '../../../widgets/seller_bottom_nav.dart';
+import '../../../widgets/seller_shimmer_loading.dart';
 
 class SellerHomeScreen extends StatefulWidget {
   const SellerHomeScreen({super.key});
@@ -27,6 +28,7 @@ class _SellerHomeScreenState extends State<SellerHomeScreen> {
 
   String sellerName = "Muhammad Junaid";
   String sellerEmail = "mrj25346@gmail.com";
+  String? sellerAvatarUrl;
 
   double todaysRevenue = 0.0;
   double totalRevenue = 0.0;
@@ -97,6 +99,9 @@ class _SellerHomeScreenState extends State<SellerHomeScreen> {
     final user = supabase.auth.currentUser;
     if (user != null) {
       final nameMeta = user.userMetadata?['name']?.toString() ?? user.userMetadata?['full_name']?.toString();
+      final avatarMeta = user.userMetadata?['avatar_url']?.toString() ??
+          user.userMetadata?['picture']?.toString() ??
+          user.userMetadata?['logo_url']?.toString();
 
       if (mounted) {
         setState(() {
@@ -106,14 +111,48 @@ class _SellerHomeScreenState extends State<SellerHomeScreen> {
             sellerName = user.email!.split('@')[0];
           }
           sellerEmail = user.email ?? sellerEmail;
+          if (avatarMeta != null && avatarMeta.trim().isNotEmpty) {
+            sellerAvatarUrl = avatarMeta.trim();
+          }
         });
       }
 
+      // 1. Check sellers table
       try {
-        final storeRes = await supabase.from('seller_stores').select('is_active').eq('seller_id', user.id).maybeSingle();
+        final sellerRes = await supabase.from('sellers').select('avatar_url, store_name, name, logo_url').eq('id', user.id).maybeSingle();
+        if (sellerRes != null && mounted) {
+          final av = sellerRes['avatar_url']?.toString() ?? sellerRes['logo_url']?.toString();
+          final sName = sellerRes['name']?.toString() ?? sellerRes['store_name']?.toString();
+          setState(() {
+            if (av != null && av.trim().isNotEmpty) sellerAvatarUrl = av.trim();
+            if (sName != null && sName.trim().isNotEmpty) sellerName = sName.trim();
+          });
+        }
+      } catch (_) {}
+
+      // 2. Check profiles table
+      try {
+        final profileRes = await supabase.from('profiles').select('avatar_url, full_name, name, profile_image').eq('id', user.id).maybeSingle();
+        if (profileRes != null && mounted) {
+          final av = profileRes['avatar_url']?.toString() ?? profileRes['profile_image']?.toString();
+          final pName = profileRes['full_name']?.toString() ?? profileRes['name']?.toString();
+          setState(() {
+            if (av != null && av.trim().isNotEmpty) sellerAvatarUrl = av.trim();
+            if (pName != null && pName.trim().isNotEmpty) sellerName = pName.trim();
+          });
+        }
+      } catch (_) {}
+
+      // 3. Check seller_stores table
+      try {
+        final storeRes = await supabase.from('seller_stores').select('*').eq('seller_id', user.id).maybeSingle();
         if (storeRes != null && mounted) {
+          final logo = storeRes['logo_url']?.toString() ?? storeRes['avatar_url']?.toString();
           setState(() {
             isStoreActive = storeRes['is_active'] == true;
+            if (logo != null && logo.trim().isNotEmpty && (sellerAvatarUrl == null || sellerAvatarUrl!.isEmpty)) {
+              sellerAvatarUrl = logo.trim();
+            }
           });
         }
       } catch (e) {
@@ -234,9 +273,9 @@ class _SellerHomeScreenState extends State<SellerHomeScreen> {
         } catch (_) {}
       }
 
-      final uid = order['user_id']?.toString();
+      final uid = (order['user_id'] ?? order['buyer_id'] ?? order['phone'] ?? order['customer_name'] ?? order['id'])?.toString();
       if (uid != null && uid.trim().isNotEmpty) {
-        uniqueCustomers.add(uid);
+        uniqueCustomers.add(uid.trim());
       }
     }
 
@@ -325,54 +364,112 @@ class _SellerHomeScreenState extends State<SellerHomeScreen> {
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
         elevation: 0,
-        toolbarHeight: 46.0,
+        toolbarHeight: 42.0,
         centerTitle: true,
         leading: Builder(
           builder: (context) => IconButton(
-            icon: const Icon(Icons.menu_rounded, color: slateDark, size: 22),
+            icon: const Icon(Icons.menu_rounded, color: slateDark, size: 21),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
             onPressed: () => Scaffold.of(context).openDrawer(),
           ),
         ),
-        title: const Text(
-          "StyLuxe",
-          style: TextStyle(color: slateDark, fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: -0.4),
+        title: RichText(
+          text: const TextSpan(
+            children: [
+              TextSpan(
+                text: "Sty",
+                style: TextStyle(
+                  color: slateDark,
+                  fontSize: 17.5,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.4,
+                ),
+              ),
+              TextSpan(
+                text: "Luxe",
+                style: TextStyle(
+                  color: sapphireBlue,
+                  fontSize: 17.5,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.4,
+                ),
+              ),
+            ],
+          ),
         ),
         actions: [
-          IconButton(
-            tooltip: "Customer Messages",
-            icon: const Icon(Icons.forum_outlined, color: slateDark, size: 23),
-            onPressed: () {
+          InkWell(
+            onTap: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const InboxScreen(isCustomer: false)),
               );
             },
+            borderRadius: BorderRadius.circular(10),
+            child: Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              alignment: Alignment.center,
+              child: const Icon(Icons.chat_bubble_outline_rounded, color: slateDark, size: 16),
+            ),
           ),
-          IconButton(
-            icon: Stack(
+          const SizedBox(width: 8),
+          InkWell(
+            onTap: () => Navigator.pushNamed(context, '/notifications'),
+            borderRadius: BorderRadius.circular(10),
+            child: Stack(
               clipBehavior: Clip.none,
               children: [
-                const Icon(Icons.notifications_none_rounded, color: slateDark, size: 24),
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  alignment: Alignment.center,
+                  child: const Icon(Icons.notifications_none_rounded, color: slateDark, size: 17),
+                ),
                 Positioned(
-                  right: -1,
-                  top: -1,
+                  right: 0,
+                  top: 0,
                   child: Container(
-                    padding: const EdgeInsets.all(3.5),
+                    width: 7,
+                    height: 7,
                     decoration: const BoxDecoration(color: Color(0xFFEF4444), shape: BoxShape.circle),
                   ),
                 ),
               ],
             ),
-            onPressed: () => Navigator.pushNamed(context, '/notifications'),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 14),
         ],
       ),
       body: isLoading
-          ? const Center(child: CircularProgressIndicator(color: sapphireBlue))
-          : RefreshIndicator(
-              onRefresh: fetchDashboardData,
-              color: sapphireBlue,
+          ? const SellerDashboardShimmer()
+          : NotificationListener<ScrollNotification>(
+              onNotification: (notification) {
+                if (notification is UserScrollNotification) {
+                  if (notification.direction == ScrollDirection.reverse) {
+                    if (_isNavVisible) setState(() => _isNavVisible = false);
+                  } else if (notification.direction == ScrollDirection.forward) {
+                    if (!_isNavVisible) setState(() => _isNavVisible = true);
+                  }
+                } else if (notification is ScrollEndNotification) {
+                  if (!_isNavVisible) setState(() => _isNavVisible = true);
+                }
+                return false;
+              },
+              child: RefreshIndicator(
+                onRefresh: fetchDashboardData,
+                color: sapphireBlue,
               child: Align(
                 alignment: Alignment.topCenter,
                 child: ConstrainedBox(
@@ -455,11 +552,21 @@ class _SellerHomeScreenState extends State<SellerHomeScreen> {
                 ),
               ),
             ),
-        bottomNavigationBar: AnimatedSlide(
+          ),
+        bottomNavigationBar: AnimatedContainer(
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeInOut,
-          offset: _isNavVisible ? Offset.zero : const Offset(0, 1.5),
-          child: const SellerBottomNav(currentIndex: 0),
+          height: _isNavVisible ? (58.0 + MediaQuery.of(context).padding.bottom) : 0.0,
+          child: Wrap(
+            children: [
+              AnimatedSlide(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+                offset: _isNavVisible ? Offset.zero : const Offset(0, 1.0),
+                child: const SellerBottomNav(currentIndex: 0),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -620,9 +727,15 @@ class _SellerHomeScreenState extends State<SellerHomeScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.18),
+                          color: Colors.white,
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.08),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -638,7 +751,15 @@ class _SellerHomeScreenState extends State<SellerHomeScreen> {
                                 .animate(onPlay: (c) => c.repeat(reverse: true))
                                 .scale(begin: const Offset(0.8, 0.8), end: const Offset(1.4, 1.4), duration: 800.ms),
                             const SizedBox(width: 4),
-                            const Text("VERIFIED STORE", style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900)),
+                            const Text(
+                              "VERIFIED STORE",
+                              style: TextStyle(
+                                color: sapphireBlue,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 0.2,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -667,22 +788,31 @@ class _SellerHomeScreenState extends State<SellerHomeScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF10B981).withValues(alpha: 0.25),
+                          color: const Color(0xFF10B981),
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.4)),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF10B981).withValues(alpha: 0.45),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.arrow_upward_rounded, color: Color(0xFF34D399), size: 11),
+                            const Icon(Icons.trending_up_rounded, color: Colors.white, size: 12),
                             const SizedBox(width: 2),
                             Text(
                               todaysRevenue > 0 ? "+${((todaysRevenue / (totalRevenue == 0 ? 1 : totalRevenue)) * 100).toStringAsFixed(0)}%" : "+18%",
-                              style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w800),
+                              style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w900),
                             ),
                           ],
                         ),
-                      ),
+                      )
+                          .animate(onPlay: (c) => c.repeat(reverse: true))
+                          .scale(begin: const Offset(0.92, 0.92), end: const Offset(1.08, 1.08), duration: 1000.ms, curve: Curves.easeInOut)
+                          .shimmer(duration: 1500.ms, color: Colors.white.withValues(alpha: 0.35)),
                     ],
                   ),
 
@@ -866,17 +996,47 @@ class _SellerHomeScreenState extends State<SellerHomeScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    CircleAvatar(
-                      radius: 22,
-                      backgroundColor: Colors.white,
-                      child: Text(
-                        sellerName.isNotEmpty ? sellerName[0].toUpperCase() : 'S',
-                        style: const TextStyle(
-                          color: sapphireBlue,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 18,
-                        ),
+                    Container(
+                      width: 46,
+                      height: 46,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.9), width: 2),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.12),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
+                      clipBehavior: Clip.antiAlias,
+                      child: (sellerAvatarUrl != null && sellerAvatarUrl!.trim().isNotEmpty)
+                          ? Image.network(
+                              sellerAvatarUrl!,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) => Center(
+                                child: Text(
+                                  sellerName.isNotEmpty ? sellerName[0].toUpperCase() : 'S',
+                                  style: const TextStyle(
+                                    color: sapphireBlue,
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 18,
+                                  ),
+                                ),
+                              ),
+                            )
+                          : Center(
+                              child: Text(
+                                sellerName.isNotEmpty ? sellerName[0].toUpperCase() : 'S',
+                                style: const TextStyle(
+                                  color: sapphireBlue,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 18,
+                                ),
+                              ),
+                            ),
                     ),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../services/courier_service.dart';
 import '../../../theme/app_theme.dart';
 import '../profile_features/help_support_screen.dart';
 
@@ -187,7 +188,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
         toolbarHeight: 46.0,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.slateDark, size: 17),
+          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.slateDark, size: 21),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
@@ -376,7 +377,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                         Expanded(
                           child: _MiniInfoCard(
                             title: "ESTIMATED DELIVERY",
-                            value: isCancelled ? "Cancelled" : _estimatedDeliveryDate(),
+                            value: isCancelled ? "Cancelled" : (order['estimated_delivery']?.toString() ?? _estimatedDeliveryDate()),
                             icon: Icons.event_available_outlined,
                             accentColor: AppColors.primary,
                           ),
@@ -385,9 +386,9 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                         Expanded(
                           child: _MiniInfoCard(
                             title: "COURIER PARTNER",
-                            value: "StyLuxe Express",
-                            icon: Icons.local_post_office_outlined,
-                            accentColor: const Color(0xFF3B82F6),
+                            value: order['courier_name']?.toString() ?? "TCS Express",
+                            icon: CourierService.getPartner(order['courier_name']?.toString()).icon,
+                            accentColor: CourierService.getPartner(order['courier_name']?.toString()).brandColor,
                           ),
                         ),
                       ],
@@ -428,116 +429,153 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                             ),
                           ],
                         ),
-                        child: Column(
-                          children: [
-                            _TrackingTimelineStep(
-                              title: "Order Placed & Confirmed",
-                              description: "Your order details have been sent to seller",
-                              isCompleted: currentStep >= 0,
-                              isActive: currentStep == 0,
-                              timestamp: _formatDate(order['created_at']),
-                            ),
-                            _TrackingTimelineStep(
-                              title: "Order Processing & Inspection",
-                              description: "Seller is preparing and quality inspecting your apparel",
-                              isCompleted: currentStep >= 1,
-                              isActive: currentStep == 1,
-                              timestamp: currentStep >= 1 ? "In progress" : "Pending",
-                            ),
-                            _TrackingTimelineStep(
-                              title: "Shipped & Out for Delivery",
-                              description: "Dispatched with courier tracking ID #STL-${_orderNumber()}",
-                              isCompleted: currentStep >= 2,
-                              isActive: currentStep == 2,
-                              timestamp: currentStep >= 2 ? "On the way" : "Pending",
-                            ),
-                            _TrackingTimelineStep(
-                              title: "Package Delivered",
-                              description: "Handed over safely to customer delivery address",
-                              isCompleted: currentStep >= 3,
-                              isActive: currentStep == 3,
-                              timestamp: currentStep >= 3 ? "Completed" : "Estimated soon",
-                              isLast: true,
-                            ),
-                          ],
-                        ),
+                        child: Builder(builder: (context) {
+                          final cName = order['courier_name']?.toString() ?? "TCS Express";
+                          final tNum = order['tracking_number']?.toString() ?? "STL-${_orderNumber()}";
+                          final cPartner = CourierService.getPartner(cName);
+
+                          return Column(
+                            children: [
+                              _TrackingTimelineStep(
+                                title: "Order Placed & Confirmed",
+                                description: "Your order details have been received",
+                                isCompleted: currentStep >= 0,
+                                isActive: currentStep == 0,
+                                timestamp: _formatDate(order['created_at']),
+                              ),
+                              _TrackingTimelineStep(
+                                title: "Order Processing & Inspection",
+                                description: "Seller is preparing and quality inspecting your apparel",
+                                isCompleted: currentStep >= 1,
+                                isActive: currentStep == 1,
+                                timestamp: currentStep >= 1 ? "In progress" : "Pending",
+                              ),
+                              _TrackingTimelineStep(
+                                title: "Shipped via ${cPartner.name}",
+                                description: "Dispatched with tracking ID #$tNum",
+                                isCompleted: currentStep >= 2,
+                                isActive: currentStep == 2,
+                                timestamp: currentStep >= 2 ? (order['shipped_at'] != null ? _formatDate(order['shipped_at']) : "On the way") : "Pending",
+                              ),
+                              _TrackingTimelineStep(
+                                title: "Package Delivered",
+                                description: "Handed over safely to customer delivery address",
+                                isCompleted: currentStep >= 3,
+                                isActive: currentStep == 3,
+                                timestamp: currentStep >= 3 ? "Completed" : (order['estimated_delivery']?.toString() ?? "Estimated soon"),
+                                isLast: true,
+                              ),
+                            ],
+                          );
+                        }),
                       ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.06),
 
                     const SizedBox(height: 22),
 
                     // ================= COURIER TRACKING ID CARD =================
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: const Color(0xFFE2E8F0)),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.03),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary.withValues(alpha: 0.10),
-                              borderRadius: BorderRadius.circular(14),
+                    Builder(builder: (context) {
+                      final cName = order['courier_name']?.toString() ?? "TCS Express";
+                      final tNum = order['tracking_number']?.toString() ?? "STL-${_orderNumber()}";
+                      final cPartner = CourierService.getPartner(cName);
+
+                      return Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.03),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
                             ),
-                            child: const Icon(Icons.qr_code_2_rounded, color: AppColors.primary, size: 24),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            Row(
                               children: [
-                                const Text(
-                                  "TRACKING CODE",
-                                  style: TextStyle(
-                                    color: AppColors.slateMuted,
-                                    fontSize: 10.5,
-                                    fontWeight: FontWeight.w700,
-                                    letterSpacing: 0.5,
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: cPartner.brandColor.withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  child: Icon(cPartner.icon, color: cPartner.brandColor, size: 24),
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        "${cPartner.name.toUpperCase()} TRACKING",
+                                        style: TextStyle(
+                                          color: cPartner.brandColor,
+                                          fontSize: 10.5,
+                                          fontWeight: FontWeight.w800,
+                                          letterSpacing: 0.5,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        tNum,
+                                        style: const TextStyle(
+                                          color: AppColors.slateDark,
+                                          fontSize: 14.5,
+                                          fontWeight: FontWeight.w900,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  "STL-${_orderNumber()}",
-                                  style: const TextStyle(
-                                    color: AppColors.slateDark,
-                                    fontSize: 14.5,
-                                    fontWeight: FontWeight.w800,
+                                OutlinedButton.icon(
+                                  onPressed: () {
+                                    Clipboard.setData(ClipboardData(text: tNum));
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text("Tracking code copied to clipboard!"),
+                                        backgroundColor: AppColors.primary,
+                                      ),
+                                    );
+                                  },
+                                  icon: const Icon(Icons.copy_rounded, size: 14, color: AppColors.slateDark),
+                                  label: const Text("Copy", style: TextStyle(color: AppColors.slateDark, fontWeight: FontWeight.w700, fontSize: 12.5)),
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                    side: const BorderSide(color: Color(0xFFE2E8F0)),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                                   ),
                                 ),
                               ],
                             ),
-                          ),
-                          OutlinedButton.icon(
-                            onPressed: () {
-                              Clipboard.setData(ClipboardData(text: "STL-${_orderNumber()}"));
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text("Tracking code copied to clipboard!"),
-                                  backgroundColor: AppColors.primary,
+
+                            const SizedBox(height: 14),
+
+                            // Official Portal Button
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: cPartner.brandColor,
+                                  padding: const EdgeInsets.symmetric(vertical: 11),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  elevation: 0,
                                 ),
-                              );
-                            },
-                            icon: const Icon(Icons.copy_rounded, size: 14, color: AppColors.slateDark),
-                            label: const Text("Copy", style: TextStyle(color: AppColors.slateDark, fontWeight: FontWeight.w700, fontSize: 12.5)),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                              side: const BorderSide(color: Color(0xFFE2E8F0)),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                onPressed: () => CourierService.openTrackingPortal(cName, tNum),
+                                icon: const Icon(Icons.open_in_new_rounded, color: Colors.white, size: 16),
+                                label: Text(
+                                  "Track Live on ${cPartner.name} Portal",
+                                  style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w800),
+                                ),
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.06),
+                          ],
+                        ),
+                      );
+                    }).animate().fadeIn(delay: 200.ms).slideY(begin: 0.06),
 
                     const SizedBox(height: 20),
 

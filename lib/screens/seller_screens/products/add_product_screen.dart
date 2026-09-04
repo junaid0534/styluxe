@@ -28,6 +28,9 @@ class _AddProductScreenState extends State<AddProductScreen> {
   final fabricController = TextEditingController();
   final customCategoryController = TextEditingController();
 
+  final FocusNode colorFocusNode = FocusNode();
+  bool showColorPalette = false;
+
   String? selectedCategory;
   String selectedGender = "Unisex";
   String selectedStitchedStatus = "Stitched";
@@ -70,6 +73,12 @@ class _AddProductScreenState extends State<AddProductScreen> {
   @override
   void initState() {
     super.initState();
+    colorFocusNode.addListener(() {
+      if (colorFocusNode.hasFocus && !showColorPalette) {
+        setState(() => showColorPalette = true);
+      }
+    });
+
     if (widget.preSelectedCategory != null && widget.preSelectedCategory!.trim().isNotEmpty) {
       selectedCategory = widget.preSelectedCategory!.trim();
       if (!categoriesList.contains(selectedCategory)) {
@@ -90,7 +99,49 @@ class _AddProductScreenState extends State<AddProductScreen> {
     colorController.dispose();
     fabricController.dispose();
     customCategoryController.dispose();
+    colorFocusNode.dispose();
     super.dispose();
+  }
+
+  final List<String> popularColors = [
+    "Black",
+    "White",
+    "Navy Blue",
+    "Royal Blue",
+    "Maroon",
+    "Red",
+    "Brown",
+    "Beige",
+    "Sage Grey",
+    "Emerald Green",
+    "Purple",
+    "Pink",
+    "Olive",
+    "Grey",
+  ];
+
+  Color _getColorFromName(String name) {
+    final n = name.trim().toLowerCase();
+    if (n.contains('black')) return const Color(0xFF1E293B);
+    if (n.contains('white')) return const Color(0xFFF8FAFC);
+    if (n.contains('navy')) return const Color(0xFF1E3A8A);
+    if (n.contains('royal')) return const Color(0xFF2563EB);
+    if (n.contains('blue')) return const Color(0xFF3B82F6);
+    if (n.contains('maroon')) return const Color(0xFF881337);
+    if (n.contains('red')) return const Color(0xFFDC2626);
+    if (n.contains('brown')) return const Color(0xFF78350F);
+    if (n.contains('beige')) return const Color(0xFFD4B996);
+    if (n.contains('sage') || (n.contains('grey') && n.contains('sage'))) return const Color(0xFF9CA3AF);
+    if (n.contains('emerald') || n.contains('green')) return const Color(0xFF059669);
+    if (n.contains('purple')) return const Color(0xFF9333EA);
+    if (n.contains('pink')) return const Color(0xFFEC4899);
+    if (n.contains('yellow')) return const Color(0xFFEAB308);
+    if (n.contains('olive')) return const Color(0xFF65A30D);
+    if (n.contains('gold')) return const Color(0xFFCA8A04);
+    if (n.contains('grey') || n.contains('gray')) return const Color(0xFF64748B);
+    if (n.contains('orange')) return const Color(0xFFEA580C);
+    if (n.contains('teal')) return const Color(0xFF0D9488);
+    return const Color(0xFF2563EB);
   }
 
   bool get isClothingCategory {
@@ -106,6 +157,16 @@ class _AddProductScreenState extends State<AddProductScreen> {
         cat.contains('kurti');
   }
 
+  bool get requiresStitchingStatus {
+    final cat = (selectedCategory ?? '').toLowerCase();
+    return cat.contains('suit') ||
+        cat.contains('dress') ||
+        cat.contains('kurti') ||
+        cat.contains('fabric') ||
+        cat.contains('lawn') ||
+        cat.contains('unstitched');
+  }
+
   bool get isShoeCategory {
     final cat = (selectedCategory ?? '').toLowerCase();
     return cat.contains('shoe') || cat.contains('sneaker') || cat.contains('heel') || cat.contains('sandal') || cat.contains('boot');
@@ -113,11 +174,11 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
   List<String> get availableSizesForCategory {
     if (isShoeCategory) {
-      return ["36", "37", "38", "39", "40", "41", "42", "43", "44", "45"];
+      return ["36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46", "6", "7", "8", "9", "10", "11", "12"];
     } else if (isClothingCategory) {
-      return ["XS", "S", "M", "L", "XL", "XXL", "Free Size"];
+      return ["XS", "S", "M", "L", "XL", "XXL", "3XL", "Free Size"];
     } else {
-      return ["One Size (N/A)"];
+      return ["Standard Size", "One Size", "Small", "Medium", "Large"];
     }
   }
 
@@ -435,40 +496,126 @@ class _AddProductScreenState extends State<AddProductScreen> {
                             Expanded(
                               child: TextFormField(
                                 controller: colorController,
-                                decoration: _inputDecoration("Color / Variant", "e.g., Emerald Green", Icons.palette_outlined),
+                                focusNode: colorFocusNode,
+                                onTap: () {
+                                  if (!showColorPalette) {
+                                    setState(() => showColorPalette = true);
+                                  }
+                                },
+                                decoration: _inputDecoration("Color / Variant", "e.g., Black, Navy Blue, Maroon", Icons.palette_outlined).copyWith(
+                                  suffixIcon: IconButton(
+                                    icon: Icon(
+                                      showColorPalette ? Icons.keyboard_arrow_up_rounded : Icons.palette_outlined,
+                                      color: showColorPalette ? sapphireBlue : slateMuted,
+                                      size: 20,
+                                    ),
+                                    onPressed: () => setState(() => showColorPalette = !showColorPalette),
+                                    tooltip: showColorPalette ? "Hide Colors" : "Show Colors",
+                                  ),
+                                ),
                               ),
                             ),
                           ],
                         ),
+                        if (showColorPalette) ...[
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF8FAFC),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: const Color(0xFFE2E8F0)),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text("Select Colors (Tap to add/remove)", style: TextStyle(color: slateDark, fontSize: 11.5, fontWeight: FontWeight.w700)),
+                                    InkWell(
+                                      onTap: () => setState(() => showColorPalette = false),
+                                      child: const Text("Done", style: TextStyle(color: sapphireBlue, fontSize: 11.5, fontWeight: FontWeight.w800)),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Wrap(
+                                  spacing: 6,
+                                  runSpacing: 6,
+                                  children: popularColors.map((clr) {
+                                    final currentList = colorController.text.split(',').map((c) => c.trim().toLowerCase()).toList();
+                                    final isSel = currentList.contains(clr.toLowerCase());
+                                    return FilterChip(
+                                      avatar: Container(
+                                        width: 12,
+                                        height: 12,
+                                        decoration: BoxDecoration(
+                                          color: _getColorFromName(clr),
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color: isSel ? Colors.white70 : Colors.black12,
+                                            width: 1,
+                                          ),
+                                        ),
+                                      ),
+                                      label: Text(clr, style: TextStyle(color: isSel ? Colors.white : slateDark, fontSize: 10.5, fontWeight: FontWeight.w700)),
+                                      selected: isSel,
+                                      selectedColor: sapphireBlue,
+                                      backgroundColor: Colors.white,
+                                      checkmarkColor: Colors.white,
+                                      onSelected: (sel) {
+                                        final existing = colorController.text.split(',').map((c) => c.trim()).where((c) => c.isNotEmpty).toList();
+                                        if (sel) {
+                                          if (!existing.any((c) => c.toLowerCase() == clr.toLowerCase())) {
+                                            existing.add(clr);
+                                          }
+                                        } else {
+                                          existing.removeWhere((c) => c.toLowerCase() == clr.toLowerCase());
+                                        }
+                                        setState(() {
+                                          colorController.text = existing.join(", ");
+                                        });
+                                      },
+                                    );
+                                  }).toList(),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
 
                         const SizedBox(height: 24),
 
                         // ================= 4. ITEM-SPECIFIC DYNAMIC PROPERTIES =================
                         if (isClothingCategory) ...[
-                          _sectionTitle("Clothing Specifications", "Stitched status & Fabric details"),
-                          const SizedBox(height: 12),
-                          Wrap(
-                            crossAxisAlignment: WrapCrossAlignment.center,
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: [
-                              const Text("Stitched Status: ", style: TextStyle(color: slateDark, fontSize: 13, fontWeight: FontWeight.w700)),
-                              ...["Stitched", "Unstitched", "Semi-Stitched"].map((st) {
-                                final isSel = selectedStitchedStatus == st;
-                                return ChoiceChip(
-                                  label: Text(st, style: TextStyle(color: isSel ? Colors.white : slateDark, fontSize: 11, fontWeight: FontWeight.w700)),
-                                  selected: isSel,
-                                  selectedColor: sapphireBlue,
-                                  backgroundColor: const Color(0xFFF1F5F9),
-                                  onSelected: (sel) => setState(() => selectedStitchedStatus = st),
-                                );
-                              }),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
+                          if (requiresStitchingStatus) ...[
+                            _sectionTitle("Stitching Status", "Select stitched or unstitched fabric"),
+                            const SizedBox(height: 12),
+                            Wrap(
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: [
+                                ...["Stitched", "Unstitched", "Semi-Stitched"].map((st) {
+                                  final isSel = selectedStitchedStatus == st;
+                                  return ChoiceChip(
+                                    label: Text(st, style: TextStyle(color: isSel ? Colors.white : slateDark, fontSize: 11, fontWeight: FontWeight.w700)),
+                                    selected: isSel,
+                                    selectedColor: sapphireBlue,
+                                    backgroundColor: const Color(0xFFF1F5F9),
+                                    onSelected: (sel) => setState(() => selectedStitchedStatus = st),
+                                  );
+                                }),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                          ],
+                          _sectionTitle("Fabric / Material", "Specify cloth or fabric details (Optional)"),
+                          const SizedBox(height: 10),
                           TextFormField(
                             controller: fabricController,
-                            decoration: _inputDecoration("Fabric / Material", "e.g., Pure Lawn, Silk, Denim, Chiffon", Icons.texture_rounded),
+                            decoration: _inputDecoration("Fabric / Material", "e.g., Pure Cotton, Fleece, Denim, Lawn, Silk", Icons.texture_rounded),
                           ),
                           const SizedBox(height: 24),
                         ],

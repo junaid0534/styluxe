@@ -340,7 +340,7 @@ class _WishlistScreenState extends State<WishlistScreen> {
         toolbarHeight: 46.0,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.slateDark, size: 17),
+          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.slateDark, size: 21),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(

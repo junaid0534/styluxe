@@ -436,7 +436,7 @@ class _ShopNowScreenState extends State<ShopNowScreen> {
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.slateDark, size: 18),
+          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.slateDark, size: 21),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -466,67 +466,69 @@ class _ShopNowScreenState extends State<ShopNowScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Search Bar & Category Dropdown Row
+            // 1. Full-Width Search Bar (Complete line with subtle corner radius)
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              child: Container(
+                height: 42,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.03),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  textInputAction: TextInputAction.search,
+                  onChanged: (value) {
+                    searchQuery = value.trim();
+                    filterProducts();
+                  },
+                  style: const TextStyle(color: AppColors.slateDark, fontSize: 13, fontWeight: FontWeight.w500),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    errorBorder: InputBorder.none,
+                    disabledBorder: InputBorder.none,
+                    hintText: "Search products by name or style...",
+                    hintStyle: const TextStyle(color: AppColors.slateMuted, fontSize: 12.5),
+                    prefixIcon: const Icon(Icons.search_rounded, color: AppColors.slateMuted, size: 19),
+                    prefixIconConstraints: const BoxConstraints(minWidth: 38, minHeight: 38),
+                    suffixIcon: searchQuery.isNotEmpty
+                        ? IconButton(
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                            icon: const Icon(Icons.close_rounded, size: 16, color: AppColors.slateMuted),
+                            onPressed: () {
+                              _searchController.clear();
+                              searchQuery = "";
+                              filterProducts();
+                            },
+                          )
+                        : null,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                  ),
+                ),
+              ),
+            ),
+
+            // 2. Filters Row (Placed cleanly underneath the search bar)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: Row(
                 children: [
-                  // 1. Search Bar (Expanded)
-                  Expanded(
-                    child: Container(
-                      height: 38,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: const Color(0xFFE2E8F0), width: 1),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.03),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: TextField(
-                        controller: _searchController,
-                        textInputAction: TextInputAction.search,
-                        onChanged: (value) {
-                          searchQuery = value.trim();
-                          filterProducts();
-                        },
-                        style: const TextStyle(color: AppColors.slateDark, fontSize: 13, fontWeight: FontWeight.w500),
-                        decoration: InputDecoration(
-                          isDense: true,
-                          border: InputBorder.none,
-                          enabledBorder: InputBorder.none,
-                          focusedBorder: InputBorder.none,
-                          errorBorder: InputBorder.none,
-                          disabledBorder: InputBorder.none,
-                          prefixIcon: const Icon(Icons.search_rounded, color: AppColors.slateMuted, size: 18),
-                          prefixIconConstraints: const BoxConstraints(minWidth: 34, minHeight: 34),
-                          suffixIcon: searchQuery.isNotEmpty
-                              ? IconButton(
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-                                  icon: const Icon(Icons.close_rounded, size: 16, color: AppColors.slateMuted),
-                                  onPressed: () {
-                                    _searchController.clear();
-                                    searchQuery = "";
-                                    filterProducts();
-                                  },
-                                )
-                              : null,
-                          contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-
-                  // 2. Category Dropdown Selector
+                  // Category Dropdown Selector
                   Container(
-                    height: 38,
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    height: 36,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
                     decoration: BoxDecoration(
                       color: selectedCategory == "All" ? Colors.white : AppColors.primary,
                       borderRadius: BorderRadius.circular(10),
@@ -537,9 +539,9 @@ class _ShopNowScreenState extends State<ShopNowScreen> {
                       boxShadow: [
                         BoxShadow(
                           color: selectedCategory == "All"
-                              ? Colors.black.withValues(alpha: 0.03)
-                              : AppColors.primary.withValues(alpha: 0.25),
-                          blurRadius: 8,
+                              ? Colors.black.withValues(alpha: 0.02)
+                              : AppColors.primary.withValues(alpha: 0.20),
+                          blurRadius: 6,
                           offset: const Offset(0, 2),
                         ),
                       ],
@@ -557,7 +559,7 @@ class _ShopNowScreenState extends State<ShopNowScreen> {
                       ),
                       color: Colors.white,
                       elevation: 8,
-                      offset: const Offset(0, 44),
+                      offset: const Offset(0, 42),
                       itemBuilder: (BuildContext context) {
                         return categories.map((String cat) {
                           final isSelected = _normalizeCategory(cat).toLowerCase() == _normalizeCategory(selectedCategory).toLowerCase();
@@ -592,19 +594,19 @@ class _ShopNowScreenState extends State<ShopNowScreen> {
                             size: 14,
                             color: selectedCategory == "All" ? AppColors.slateDark : Colors.white,
                           ),
-                          const SizedBox(width: 4),
+                          const SizedBox(width: 5),
                           Text(
                             selectedCategory == "All" ? "Category" : selectedCategory,
                             style: TextStyle(
-                              fontSize: 11.5,
+                              fontSize: 12,
                               fontWeight: FontWeight.w700,
                               color: selectedCategory == "All" ? AppColors.slateDark : Colors.white,
                             ),
                           ),
-                          const SizedBox(width: 2),
+                          const SizedBox(width: 3),
                           Icon(
                             Icons.keyboard_arrow_down_rounded,
-                            size: 14,
+                            size: 15,
                             color: selectedCategory == "All" ? AppColors.slateMuted : Colors.white,
                           ),
                         ],
@@ -613,10 +615,10 @@ class _ShopNowScreenState extends State<ShopNowScreen> {
                   ),
                   const SizedBox(width: 8),
 
-                  // 3. Price Filter Dropdown Selector
+                  // Price Filter Dropdown Selector
                   Container(
-                    height: 38,
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    height: 36,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
                     decoration: BoxDecoration(
                       color: _hasActivePriceFilter() ? AppColors.primary : Colors.white,
                       borderRadius: BorderRadius.circular(10),
@@ -627,9 +629,9 @@ class _ShopNowScreenState extends State<ShopNowScreen> {
                       boxShadow: [
                         BoxShadow(
                           color: _hasActivePriceFilter()
-                              ? AppColors.primary.withValues(alpha: 0.25)
-                              : Colors.black.withValues(alpha: 0.03),
-                          blurRadius: 8,
+                              ? AppColors.primary.withValues(alpha: 0.20)
+                              : Colors.black.withValues(alpha: 0.02),
+                          blurRadius: 6,
                           offset: const Offset(0, 2),
                         ),
                       ],
@@ -656,7 +658,7 @@ class _ShopNowScreenState extends State<ShopNowScreen> {
                       ),
                       color: Colors.white,
                       elevation: 8,
-                      offset: const Offset(0, 44),
+                      offset: const Offset(0, 42),
                       itemBuilder: (BuildContext context) {
                         return [
                           const PopupMenuItem<String>(
@@ -762,25 +764,63 @@ class _ShopNowScreenState extends State<ShopNowScreen> {
                             size: 14,
                             color: _hasActivePriceFilter() ? Colors.white : AppColors.slateDark,
                           ),
-                          const SizedBox(width: 4),
+                          const SizedBox(width: 5),
                           Text(
                             _getPriceFilterLabel(),
                             style: TextStyle(
-                              fontSize: 11.5,
+                              fontSize: 12,
                               fontWeight: FontWeight.w700,
                               color: _hasActivePriceFilter() ? Colors.white : AppColors.slateDark,
                             ),
                           ),
-                          const SizedBox(width: 2),
+                          const SizedBox(width: 3),
                           Icon(
                             Icons.keyboard_arrow_down_rounded,
-                            size: 14,
+                            size: 15,
                             color: _hasActivePriceFilter() ? Colors.white : AppColors.slateMuted,
                           ),
                         ],
                       ),
                     ),
                   ),
+
+                  // Clear Filters if active
+                  if (selectedCategory != "All" || _hasActivePriceFilter() || searchQuery.isNotEmpty) ...[
+                    const SizedBox(width: 8),
+                    InkWell(
+                      onTap: () {
+                        setState(() {
+                          selectedCategory = "All";
+                          selectedPriceSort = "default";
+                          selectedPriceRange = "all";
+                          searchQuery = "";
+                          _searchController.clear();
+                          screenTitle = "Shop Now";
+                        });
+                        filterProducts();
+                      },
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        height: 36,
+                        padding: const EdgeInsets.symmetric(horizontal: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.restart_alt_rounded, size: 14, color: AppColors.slateDark),
+                            SizedBox(width: 4),
+                            Text(
+                              "Reset",
+                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.slateDark),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -803,9 +843,9 @@ class _ShopNowScreenState extends State<ShopNowScreen> {
                             ),
                             padding: const EdgeInsets.fromLTRB(12, 4, 12, 20),
                             itemCount: filteredProducts.length,
-                            gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                              maxCrossAxisExtent: 130,
-                              mainAxisExtent: 172,
+                            gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+                              maxCrossAxisExtent: MediaQuery.of(context).size.width >= 700 ? 180 : 135,
+                              mainAxisExtent: MediaQuery.of(context).size.width >= 700 ? 230 : 178,
                               crossAxisSpacing: 8,
                               mainAxisSpacing: 8,
                             ),
@@ -1047,11 +1087,9 @@ class ProductCardItem extends StatelessWidget {
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
           children: [
-            // Dedicated Full Fit AspectRatio Image Box
-            AspectRatio(
-              aspectRatio: 1.05,
+            // Dedicated Full Fit Flexible Image Box (Adaptive to any screen size)
+            Expanded(
               child: Container(
                 decoration: const BoxDecoration(
                   color: Color(0xFFF1F5F9),

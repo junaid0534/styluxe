@@ -1,8 +1,15 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../services/courier_service.dart';
+import '../../../services/inventory_service.dart';
+import '../../../services/realtime_notification_service.dart';
 import '../../../widgets/seller_bottom_nav.dart';
+import '../../../widgets/seller_shimmer_loading.dart';
+import 'seller_order_fulfillment_screen.dart';
+import 'seller_ship_order_screen.dart';
 
 class ActiveOrdersScreen extends StatefulWidget {
   const ActiveOrdersScreen({super.key});
@@ -18,6 +25,7 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
   List<Map<String, dynamic>> allOrders = [];
   List<Map<String, dynamic>> returnRequests = [];
   bool isLoading = true;
+  bool _isNavVisible = true;
 
   String selectedFilter = "All Active";
   String searchQuery = "";
@@ -29,7 +37,7 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
   static const Color sapphireLight = Color(0xFFEFF6FF);
   static const Color slateDark = Color(0xFF0F172A);
   static const Color slateMuted = Color(0xFF64748B);
-  static const Color cardBorderColor = Color(0xFF93C5FD);
+  static const Color cardBorderColor = Color(0xFFE2E8F0);
   static const Color bgColor = Colors.white;
 
   @override
@@ -126,6 +134,51 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
           .update({'status': newStatus})
           .eq('id', orderId);
 
+      // Notify Buyer in Real-Time
+      try {
+        final orderObj = allOrders.firstWhere(
+          (o) => o['id']?.toString() == orderId,
+          orElse: () => <String, dynamic>{},
+        );
+        final buyerId = orderObj['user_id']?.toString() ?? orderObj['buyer_id']?.toString();
+        final orderCode = orderObj['order_id']?.toString() ?? 'ORD-$orderId';
+
+        if (buyerId != null && buyerId.isNotEmpty) {
+          String notifTitle = "Order Status Updated";
+          String notifMsg = "Your order #$orderCode status is now '$newStatus'.";
+
+          if (newStatus.toLowerCase() == 'shipped') {
+            notifTitle = "🚚 Order Shipped!";
+            notifMsg = "Your order #$orderCode has been shipped and is on its way.";
+          } else if (newStatus.toLowerCase() == 'delivered') {
+            notifTitle = "✅ Order Delivered!";
+            notifMsg = "Your order #$orderCode has been successfully delivered. Enjoy!";
+          } else if (newStatus.toLowerCase() == 'processing') {
+            notifTitle = "⚙️ Order Processing";
+            notifMsg = "The seller is preparing your order #$orderCode for dispatch.";
+          } else if (newStatus.toLowerCase() == 'cancelled') {
+            notifTitle = "❌ Order Cancelled";
+            notifMsg = "Your order #$orderCode has been cancelled.";
+          }
+
+          await RealtimeNotificationService.sendNotification(
+            userId: buyerId,
+            title: notifTitle,
+            message: notifMsg,
+            type: 'status_change',
+            additionalData: {'order_id': orderId, 'status': newStatus},
+          );
+        }
+      } catch (e) {
+        debugPrint("Buyer status notification error: $e");
+      }
+
+      // If order is cancelled/rejected/refunded, reverse-count / restore product stock
+      final lower = newStatus.toLowerCase();
+      if (lower == 'cancelled' || lower == 'canceled' || lower == 'rejected' || lower == 'refunded') {
+        await InventoryService.restoreStockForOrder(orderId);
+      }
+
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -143,6 +196,10 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
       );
     }
   }
+
+
+
+
 
   // ================= UPDATE RETURN REQUEST STATUS =================
   Future<void> _updateReturnStatus(String requestId, String newStatus) async {
@@ -177,69 +234,113 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
         elevation: 0,
+        toolbarHeight: 42.0,
         centerTitle: true,
         title: const Text(
-          "Order Fulfillment Center",
-          style: TextStyle(color: slateDark, fontSize: 18, fontWeight: FontWeight.w900),
+          "Orders",
+          style: TextStyle(
+            color: slateDark,
+            fontSize: 17.5,
+            fontWeight: FontWeight.w900,
+            letterSpacing: -0.3,
+          ),
         ),
       ),
       body: isLoading
-          ? const Center(child: CircularProgressIndicator(color: sapphireBlue))
-          : RefreshIndicator(
-              onRefresh: fetchOrdersAndReturns,
-              color: sapphireBlue,
-              child: Align(
-                alignment: Alignment.topCenter,
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 1100),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 8),
-
-                      // ================= 1. SEARCH BAR =================
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Container(
-                          height: 42,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF1F5F9),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: const Color(0xFFE2E8F0)),
-                          ),
-                          child: TextField(
-                            controller: _searchController,
-                            onChanged: (val) => setState(() => searchQuery = val.trim().toLowerCase()),
-                            style: const TextStyle(fontSize: 13, color: slateDark),
-                            decoration: const InputDecoration(
-                              hintText: "Search Order ID, Phone, or Address...",
-                              hintStyle: TextStyle(color: slateMuted, fontSize: 12.5),
-                              prefixIcon: Icon(Icons.search_rounded, color: slateMuted, size: 20),
-                              border: InputBorder.none,
-                              contentPadding: EdgeInsets.symmetric(vertical: 10),
+          ? const SellerOrdersShimmer()
+          : NotificationListener<ScrollNotification>(
+              onNotification: (notification) {
+                if (notification is UserScrollNotification) {
+                  if (notification.direction == ScrollDirection.reverse) {
+                    if (_isNavVisible) setState(() => _isNavVisible = false);
+                  } else if (notification.direction == ScrollDirection.forward) {
+                    if (!_isNavVisible) setState(() => _isNavVisible = true);
+                  }
+                } else if (notification is ScrollEndNotification) {
+                  if (!_isNavVisible) setState(() => _isNavVisible = true);
+                }
+                return false;
+              },
+              child: RefreshIndicator(
+                onRefresh: fetchOrdersAndReturns,
+                color: sapphireBlue,
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 1100),
+                    child: CustomScrollView(
+                      physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                      slivers: [
+                        // ================= 1. SEARCH BAR SLIVER (Scrolls out to free screen space) =================
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
+                            child: Container(
+                              height: 42,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF1F5F9),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: const Color(0xFFE2E8F0)),
+                              ),
+                              child: TextField(
+                                controller: _searchController,
+                                onChanged: (val) => setState(() => searchQuery = val.trim().toLowerCase()),
+                                style: const TextStyle(fontSize: 13, color: slateDark),
+                                decoration: InputDecoration(
+                                  hintText: "Search Order ID, Phone, or Address...",
+                                  hintStyle: const TextStyle(color: slateMuted, fontSize: 12.5),
+                                  prefixIcon: const Icon(Icons.search_rounded, color: slateMuted, size: 20),
+                                  suffixIcon: searchQuery.isNotEmpty
+                                      ? InkWell(
+                                          onTap: () {
+                                            _searchController.clear();
+                                            setState(() => searchQuery = "");
+                                          },
+                                          child: const Icon(Icons.clear_rounded, color: slateMuted, size: 18),
+                                        )
+                                      : null,
+                                  border: InputBorder.none,
+                                  contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                                ),
+                              ),
                             ),
                           ),
                         ),
-                      ),
 
-                      const SizedBox(height: 12),
+                        // ================= 2. FILTER BAR SLIVER =================
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: _buildFilterBar(),
+                          ),
+                        ),
 
-                      // ================= 2. FILTER BAR =================
-                      _buildFilterBar(),
-
-                      const SizedBox(height: 12),
-
-                      // ================= 3. ORDERS LIST / RETURNS LIST =================
-                      Expanded(
-                        child: selectedFilter == 'Return Requests'
-                            ? _buildReturnRequestsList()
-                            : _buildOrdersList(),
-                      ),
-                    ],
+                        // ================= 3. ORDERS LIST / RETURNS LIST SLIVERS =================
+                        if (selectedFilter == 'Return Requests')
+                          ..._buildReturnRequestsSlivers()
+                        else
+                          ..._buildOrdersSlivers(),
+                      ],
+                    ),
                   ),
                 ),
               ),
             ),
-      bottomNavigationBar: const SellerBottomNav(currentIndex: 1),
+      bottomNavigationBar: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+        height: _isNavVisible ? (58.0 + MediaQuery.of(context).padding.bottom) : 0.0,
+        child: Wrap(
+          children: [
+            AnimatedSlide(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+              offset: _isNavVisible ? Offset.zero : const Offset(0, 1.0),
+              child: const SellerBottomNav(currentIndex: 1),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -314,8 +415,8 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
     );
   }
 
-  // ================= ORDERS LIST =================
-  Widget _buildOrdersList() {
+  // ================= ORDERS SLIVERS =================
+  List<Widget> _buildOrdersSlivers() {
     final filtered = allOrders.where((order) {
       final st = (order['status']?.toString() ?? 'Pending').toLowerCase();
       final matchesFilter = selectedFilter == 'All Active'
@@ -335,32 +436,42 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
     }).toList();
 
     if (filtered.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.inbox_outlined, color: slateMuted, size: 48),
-            const SizedBox(height: 12),
-            Text(
-              "No $selectedFilter Orders",
-              style: const TextStyle(color: slateDark, fontSize: 16, fontWeight: FontWeight.w800),
+      return [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.inbox_outlined, color: slateMuted, size: 48),
+                const SizedBox(height: 12),
+                Text(
+                  "No $selectedFilter Orders",
+                  style: const TextStyle(color: slateDark, fontSize: 16, fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 4),
+                const Text("Orders matching this search/filter will appear here.", style: TextStyle(color: slateMuted, fontSize: 13)),
+              ],
             ),
-            const SizedBox(height: 4),
-            const Text("Orders matching this search/filter will appear here.", style: TextStyle(color: slateMuted, fontSize: 13)),
-          ],
+          ),
         ),
-      );
+      ];
     }
 
-    return ListView.builder(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-      itemCount: filtered.length,
-      itemBuilder: (context, index) {
-        final order = filtered[index];
-        return _orderCard(order).animate().fadeIn(duration: 350.ms).slideY(begin: 0.05);
-      },
-    );
+    return [
+      SliverPadding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+        sliver: SliverList(
+          delegate: SliverChildBuilderDelegate(
+            (context, index) {
+              final order = filtered[index];
+              return _orderCard(order).animate().fadeIn(duration: 350.ms).slideY(begin: 0.05);
+            },
+            childCount: filtered.length,
+          ),
+        ),
+      ),
+    ];
   }
 
   // ================= ORDER STEPPER =================
@@ -495,7 +606,10 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3.5),
                 decoration: BoxDecoration(color: statusBg, borderRadius: BorderRadius.circular(8)),
                 child: Text(status.toUpperCase(), style: TextStyle(color: statusText, fontSize: 10, fontWeight: FontWeight.w900)),
-              ),
+              )
+                  .animate(onPlay: (c) => c.repeat(reverse: true))
+                  .scale(begin: const Offset(0.92, 0.92), end: const Offset(1.08, 1.08), duration: 1000.ms, curve: Curves.easeInOut)
+                  .shimmer(duration: 1500.ms, color: Colors.white.withValues(alpha: 0.35)),
             ],
           ),
           const SizedBox(height: 10),
@@ -550,11 +664,19 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
                       backgroundColor: sapphireBlue,
                       elevation: 0,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      padding: const EdgeInsets.symmetric(vertical: 11),
                     ),
-                    onPressed: () => _updateOrderStatus(order['id'].toString(), 'Processing'),
-                    icon: const Icon(Icons.check_rounded, color: Colors.white, size: 16),
-                    label: const Text("Accept & Start Processing", style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 12.5)),
+                    onPressed: () async {
+                      final res = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => SellerOrderFulfillmentScreen(order: order),
+                        ),
+                      );
+                      if (res == true) fetchOrdersAndReturns();
+                    },
+                    icon: const Icon(Icons.fact_check_outlined, color: Colors.white, size: 16),
+                    label: const Text("Review & Approve Items", style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 12.5)),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -572,21 +694,57 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
                 minimumSize: const Size(double.infinity, 42),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
-              onPressed: () => _updateOrderStatus(order['id'].toString(), 'Shipped'),
+              onPressed: () async {
+                final res = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => SellerShipOrderScreen(order: order),
+                  ),
+                );
+                if (res == true) fetchOrdersAndReturns();
+              },
               icon: const Icon(Icons.local_shipping_outlined, color: Colors.white, size: 16),
-              label: const Text("Mark as Shipped", style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 12.5)),
+              label: const Text("Ship with Courier (TCS / Leopards / Trax)", style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 12.5)),
             )
           else if (status.toLowerCase() == 'shipped')
-            ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF10B981),
-                elevation: 0,
-                minimumSize: const Size(double.infinity, 42),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              onPressed: () => _updateOrderStatus(order['id'].toString(), 'Delivered'),
-              icon: const Icon(Icons.check_circle_outline_rounded, color: Colors.white, size: 16),
-              label: const Text("Mark as Delivered", style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 12.5)),
+            Column(
+              children: [
+                if (order['courier_name'] != null || order['tracking_number'] != null)
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF5F3FF),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFDDD6FE)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(CourierService.getPartner(order['courier_name']).icon, color: const Color(0xFF7C3AED), size: 16),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            "${order['courier_name'] ?? 'Courier'} • Tracking: ${order['tracking_number'] ?? 'N/A'}",
+                            style: const TextStyle(color: Color(0xFF6D28D9), fontSize: 11.5, fontWeight: FontWeight.w700),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF10B981),
+                    elevation: 0,
+                    minimumSize: const Size(double.infinity, 42),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: () => _updateOrderStatus(order['id'].toString(), 'Delivered'),
+                  icon: const Icon(Icons.check_circle_outline_rounded, color: Colors.white, size: 16),
+                  label: const Text("Mark as Delivered", style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 12.5)),
+                ),
+              ],
             ),
         ],
       ),
@@ -613,32 +771,42 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
     );
   }
 
-  // ================= RETURN REQUESTS LIST =================
-  Widget _buildReturnRequestsList() {
+  // ================= RETURN REQUESTS SLIVERS =================
+  List<Widget> _buildReturnRequestsSlivers() {
     if (returnRequests.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.assignment_return_outlined, color: slateMuted, size: 48),
-            const SizedBox(height: 12),
-            const Text("No Return Requests", style: TextStyle(color: slateDark, fontSize: 16, fontWeight: FontWeight.w800)),
-            const SizedBox(height: 4),
-            const Text("Customer return or exchange requests will appear here.", style: TextStyle(color: slateMuted, fontSize: 13)),
-          ],
+      return [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.assignment_return_outlined, color: slateMuted, size: 48),
+                const SizedBox(height: 12),
+                const Text("No Return Requests", style: TextStyle(color: slateDark, fontSize: 16, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 4),
+                const Text("Customer return or exchange requests will appear here.", style: TextStyle(color: slateMuted, fontSize: 13)),
+              ],
+            ),
+          ),
         ),
-      );
+      ];
     }
 
-    return ListView.builder(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-      itemCount: returnRequests.length,
-      itemBuilder: (context, index) {
-        final request = returnRequests[index];
-        return _returnRequestCard(request).animate().fadeIn(duration: 350.ms).slideY(begin: 0.05);
-      },
-    );
+    return [
+      SliverPadding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+        sliver: SliverList(
+          delegate: SliverChildBuilderDelegate(
+            (context, index) {
+              final request = returnRequests[index];
+              return _returnRequestCard(request).animate().fadeIn(duration: 350.ms).slideY(begin: 0.05);
+            },
+            childCount: returnRequests.length,
+          ),
+        ),
+      ),
+    ];
   }
 
   Widget _returnRequestCard(Map<String, dynamic> req) {
@@ -698,7 +866,10 @@ class _ActiveOrdersScreenState extends State<ActiveOrdersScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3.5),
                 decoration: BoxDecoration(color: statusBg, borderRadius: BorderRadius.circular(8)),
                 child: Text(status.toUpperCase(), style: TextStyle(color: statusText, fontSize: 10, fontWeight: FontWeight.w900)),
-              ),
+              )
+                  .animate(onPlay: (c) => c.repeat(reverse: true))
+                  .scale(begin: const Offset(0.92, 0.92), end: const Offset(1.08, 1.08), duration: 1000.ms, curve: Curves.easeInOut)
+                  .shimmer(duration: 1500.ms, color: Colors.white.withValues(alpha: 0.35)),
             ],
           ),
           const SizedBox(height: 12),

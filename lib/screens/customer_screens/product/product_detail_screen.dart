@@ -40,11 +40,22 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   double averageRating = 4.8;
   int totalReviewCount = 0;
 
+  int? _liveStock;
   StreamSubscription? _reviewsSubscription;
+  StreamSubscription? _stockSubscription;
+
+  String? selectedColor;
+  String? selectedSize;
+  List<String> availableColors = [];
+  List<String> availableSizes = [];
 
   @override
   void initState() {
     super.initState();
+    _liveStock = (widget.product['stock'] as num?)?.toInt();
+    _initVariations();
+    fetchLiveStock();
+    _subscribeRealtimeStock();
     fetchProductImages();
     checkWishlist();
     fetchCartCount();
@@ -53,12 +64,95 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     _subscribeRealtimeReviews();
   }
 
+  void _initVariations() {
+    final rawColor = widget.product['color']?.toString() ?? '';
+    if (rawColor.isNotEmpty) {
+      availableColors = rawColor
+          .split(RegExp(r'[,|/•]+'))
+          .map((c) => c.trim())
+          .where((c) => c.isNotEmpty)
+          .toList();
+      if (availableColors.isNotEmpty) {
+        selectedColor = availableColors.first;
+      }
+    }
+
+    final rawSize = widget.product['size']?.toString() ?? '';
+    if (rawSize.isNotEmpty) {
+      availableSizes = rawSize
+          .split(RegExp(r'[,|/•]+'))
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
+      if (availableSizes.isNotEmpty) {
+        selectedSize = availableSizes.first;
+      }
+    }
+  }
+
+  Color _getColorFromName(String name) {
+    final n = name.trim().toLowerCase();
+    if (n.contains('black')) return const Color(0xFF1E293B);
+    if (n.contains('white')) return const Color(0xFFF1F5F9);
+    if (n.contains('navy')) return const Color(0xFF1E3A8A);
+    if (n.contains('royal')) return const Color(0xFF2563EB);
+    if (n.contains('blue')) return const Color(0xFF3B82F6);
+    if (n.contains('maroon')) return const Color(0xFF881337);
+    if (n.contains('red')) return const Color(0xFFDC2626);
+    if (n.contains('brown')) return const Color(0xFF78350F);
+    if (n.contains('beige')) return const Color(0xFFD4B996);
+    if (n.contains('sage') || (n.contains('grey') && n.contains('sage'))) return const Color(0xFF9CA3AF);
+    if (n.contains('emerald') || n.contains('green')) return const Color(0xFF059669);
+    if (n.contains('purple')) return const Color(0xFF9333EA);
+    if (n.contains('pink')) return const Color(0xFFEC4899);
+    if (n.contains('yellow')) return const Color(0xFFEAB308);
+    if (n.contains('olive')) return const Color(0xFF65A30D);
+    if (n.contains('gold')) return const Color(0xFFCA8A04);
+    if (n.contains('grey') || n.contains('gray')) return const Color(0xFF64748B);
+    if (n.contains('orange')) return const Color(0xFFEA580C);
+    if (n.contains('teal')) return const Color(0xFF0D9488);
+    return const Color(0xFF2563EB);
+  }
+
   @override
   void dispose() {
     _autoSlideTimer?.cancel();
     _pageController.dispose();
     _reviewsSubscription?.cancel();
+    _stockSubscription?.cancel();
     super.dispose();
+  }
+
+  Future<void> fetchLiveStock() async {
+    try {
+      final res = await supabase
+          .from('products')
+          .select('stock, is_active')
+          .eq('id', productId)
+          .maybeSingle();
+      if (res != null && mounted) {
+        setState(() {
+          _liveStock = (res['stock'] as num?)?.toInt() ?? 0;
+        });
+      }
+    } catch (_) {}
+  }
+
+  void _subscribeRealtimeStock() {
+    try {
+      _stockSubscription = supabase
+          .from('products')
+          .stream(primaryKey: ['id'])
+          .eq('id', productId)
+          .listen((data) {
+            if (data.isNotEmpty && mounted) {
+              final first = data.first;
+              setState(() {
+                _liveStock = (first['stock'] as num?)?.toInt() ?? 0;
+              });
+            }
+          });
+    } catch (_) {}
   }
 
   void _subscribeRealtimeReviews() {
@@ -83,7 +177,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   String get size => widget.product['size']?.toString() ?? '';
   String get description => widget.product['description']?.toString() ?? '';
   double get price => (widget.product['price'] as num?)?.toDouble() ?? 0.0;
-  int get stock => (widget.product['stock'] as num?)?.toInt() ?? 0;
+  int get stock => _liveStock ?? (widget.product['stock'] as num?)?.toInt() ?? 0;
   bool get inStock => stock > 0;
 
   // Format price strictly as Rs. (PKR) without $ sign
@@ -238,32 +332,71 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       final currentUser = supabase.auth.currentUser;
       if (currentUser == null) throw Exception("Please login first");
 
-      final existingCartItem = await supabase
+      if (selectedColor == null && availableColors.isNotEmpty) {
+        selectedColor = availableColors.first;
+      }
+      if (selectedSize == null && availableSizes.isNotEmpty) {
+        selectedSize = availableSizes.first;
+      }
+
+      final existingCartRows = await supabase
           .from('cart')
-          .select('id, quantity')
+          .select('id, quantity, selected_color, selected_size')
           .eq('user_id', currentUser.id)
-          .eq('product_id', widget.product['id'])
-          .maybeSingle();
+          .eq('product_id', widget.product['id']);
+
+      Map<String, dynamic>? existingCartItem;
+      for (final row in existingCartRows) {
+        final rColor = row['selected_color']?.toString();
+        final rSize = row['selected_size']?.toString();
+        if ((rColor ?? '') == (selectedColor ?? '') && (rSize ?? '') == (selectedSize ?? '')) {
+          existingCartItem = row;
+          break;
+        }
+      }
 
       if (existingCartItem != null) {
         final oldQty = (existingCartItem['quantity'] as num?)?.toInt() ?? 1;
-        await supabase.from('cart').update({
-          'quantity': oldQty + selectedQuantity,
-        }).eq('id', existingCartItem['id']);
+        try {
+          await supabase.from('cart').update({
+            'quantity': oldQty + selectedQuantity,
+            if (selectedSize != null && selectedSize!.isNotEmpty) 'selected_size': selectedSize,
+            if (selectedColor != null && selectedColor!.isNotEmpty) 'selected_color': selectedColor,
+          }).eq('id', existingCartItem['id']);
+        } catch (_) {
+          await supabase.from('cart').update({
+            'quantity': oldQty + selectedQuantity,
+          }).eq('id', existingCartItem['id']);
+        }
       } else {
-        await supabase.from('cart').insert({
-          'user_id': currentUser.id,
-          'product_id': widget.product['id'],
-          'quantity': selectedQuantity,
-        });
+        try {
+          await supabase.from('cart').insert({
+            'user_id': currentUser.id,
+            'product_id': widget.product['id'],
+            'quantity': selectedQuantity,
+            if (selectedSize != null && selectedSize!.isNotEmpty) 'selected_size': selectedSize,
+            if (selectedColor != null && selectedColor!.isNotEmpty) 'selected_color': selectedColor,
+          });
+        } catch (_) {
+          await supabase.from('cart').insert({
+            'user_id': currentUser.id,
+            'product_id': widget.product['id'],
+            'quantity': selectedQuantity,
+          });
+        }
       }
 
       await fetchCartCount();
 
       if (!mounted) return;
+      final variantLabel = [
+        if (selectedColor != null && selectedColor!.isNotEmpty) selectedColor,
+        if (selectedSize != null && selectedSize!.isNotEmpty) "Size: $selectedSize",
+      ].join(", ");
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("$selectedQuantity × $name added to cart!"),
+          content: Text("$selectedQuantity × $name ${variantLabel.isNotEmpty ? "($variantLabel)" : ""} added to cart!"),
           backgroundColor: AppColors.primary,
         ),
       );
@@ -318,31 +451,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         elevation: 0,
         toolbarHeight: 46.0,
         centerTitle: true,
-        leading: Padding(
-          padding: const EdgeInsets.only(left: 14),
-          child: Center(
-            child: Container(
-              height: 34,
-              width: 34,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                shape: BoxShape.circle,
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.03),
-                    blurRadius: 5,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: IconButton(
-                padding: EdgeInsets.zero,
-                icon: const Icon(Icons.close_rounded, color: AppColors.slateDark, size: 16),
-                onPressed: () => Navigator.pop(context),
-              ),
-            ),
-          ),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.slateDark, size: 21),
+          onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
           "Product Details",
@@ -812,7 +923,176 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           const Divider(color: Color(0xFFF1F5F9), height: 1),
           const SizedBox(height: 12),
 
-          // 4. Detail Attributes Chips (Category, Size, Color, Stock Below Description)
+          // 4. Interactive Variation Selectors (Color & Size)
+          if (availableColors.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            const Divider(color: Color(0xFFF1F5F9), height: 1),
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.palette_outlined, size: 15, color: AppColors.primary),
+                    const SizedBox(width: 5),
+                    const Text("Select Color:", style: TextStyle(color: AppColors.slateDark, fontSize: 13, fontWeight: FontWeight.w800)),
+                    const SizedBox(width: 6),
+                    Text(selectedColor ?? '', style: const TextStyle(color: AppColors.primary, fontSize: 12.5, fontWeight: FontWeight.w700)),
+                  ],
+                ),
+                if (availableColors.length > 3)
+                  Container(
+                    height: 28,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: selectedColor,
+                        isDense: true,
+                        icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: AppColors.primary),
+                        items: availableColors.map((c) => DropdownMenuItem(
+                          value: c,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(width: 10, height: 10, decoration: BoxDecoration(color: _getColorFromName(c), shape: BoxShape.circle, border: Border.all(color: Colors.black12))),
+                              const SizedBox(width: 6),
+                              Text(c, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.slateDark)),
+                            ],
+                          ),
+                        )).toList(),
+                        onChanged: (val) {
+                          if (val != null) setState(() => selectedColor = val);
+                        },
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: availableColors.map((c) {
+                final isSel = selectedColor == c;
+                final clr = _getColorFromName(c);
+                return GestureDetector(
+                  onTap: () => setState(() => selectedColor = c),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: isSel ? AppColors.primary.withValues(alpha: 0.08) : const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: isSel ? AppColors.primary : const Color(0xFFE2E8F0),
+                        width: isSel ? 1.6 : 1.0,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 13,
+                          height: 13,
+                          decoration: BoxDecoration(
+                            color: clr,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.black.withValues(alpha: 0.15)),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          c,
+                          style: TextStyle(
+                            color: isSel ? AppColors.primary : AppColors.slateDark,
+                            fontSize: 11.5,
+                            fontWeight: isSel ? FontWeight.w800 : FontWeight.w600,
+                          ),
+                        ),
+                        if (isSel) ...[
+                          const SizedBox(width: 4),
+                          const Icon(Icons.check_rounded, size: 13, color: AppColors.primary),
+                        ],
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+
+          if (availableSizes.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            const Divider(color: Color(0xFFF1F5F9), height: 1),
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.straighten_outlined, size: 15, color: Color(0xFF0891B2)),
+                    const SizedBox(width: 5),
+                    const Text("Select Size:", style: TextStyle(color: AppColors.slateDark, fontSize: 13, fontWeight: FontWeight.w800)),
+                    const SizedBox(width: 6),
+                    Text(selectedSize ?? '', style: const TextStyle(color: Color(0xFF0891B2), fontSize: 12.5, fontWeight: FontWeight.w700)),
+                  ],
+                ),
+                if (availableSizes.length > 5)
+                  Container(
+                    height: 28,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: selectedSize,
+                        isDense: true,
+                        icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: Color(0xFF0891B2)),
+                        items: availableSizes.map((s) => DropdownMenuItem(
+                          value: s,
+                          child: Text(s, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.slateDark)),
+                        )).toList(),
+                        onChanged: (val) {
+                          if (val != null) setState(() => selectedSize = val);
+                        },
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: availableSizes.map((s) {
+                final isSel = selectedSize == s;
+                return ChoiceChip(
+                  label: Text(s, style: TextStyle(color: isSel ? Colors.white : AppColors.slateDark, fontSize: 11.5, fontWeight: FontWeight.w800)),
+                  selected: isSel,
+                  selectedColor: const Color(0xFF0891B2),
+                  backgroundColor: const Color(0xFFF8FAFC),
+                  side: BorderSide(color: isSel ? const Color(0xFF0891B2) : const Color(0xFFE2E8F0)),
+                  onSelected: (sel) {
+                    if (sel) setState(() => selectedSize = s);
+                  },
+                );
+              }).toList(),
+            ),
+          ],
+
+          const SizedBox(height: 12),
+          const Divider(color: Color(0xFFF1F5F9), height: 1),
+          const SizedBox(height: 12),
+
+          // 5. Detail Attributes Chips (Category, Stock)
           Wrap(
             spacing: 6,
             runSpacing: 6,
@@ -823,20 +1103,6 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   title: "Category",
                   value: category,
                   color: const Color(0xFF4F46E5),
-                ),
-              if (size.trim().isNotEmpty)
-                _detailChip(
-                  icon: Icons.straighten_outlined,
-                  title: "Size",
-                  value: size,
-                  color: const Color(0xFF0891B2),
-                ),
-              if (color.trim().isNotEmpty)
-                _detailChip(
-                  icon: Icons.color_lens_outlined,
-                  title: "Color",
-                  value: color,
-                  color: const Color(0xFFDB2777),
                 ),
               _detailChip(
                 icon: Icons.inventory_2_outlined,
@@ -1684,7 +1950,7 @@ class _ProductImageZoomScreenState extends State<ProductImageZoomScreen> {
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.slateDark, size: 18),
+          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.slateDark, size: 21),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(

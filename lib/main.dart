@@ -21,7 +21,10 @@ import 'screens/maintenance_screen.dart';
 import 'screens/chat/inbox_screen.dart';
 
 import 'services/session_service.dart';
+import 'services/realtime_notification_service.dart';
 import 'theme/app_theme.dart';
+
+final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -29,6 +32,10 @@ Future<void> main() async {
     url: 'https://sqlhkppxsbvviyengyna.supabase.co',
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNxbGhrcHB4c2J2dml5ZW5neW5hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyNDk1MDIsImV4cCI6MjA5MzgyNTUwMn0.us_kgATEOAKxrev9hwAmbEel18XqvMrTl9afetgTClk',
   );
+
+  // Initialize Realtime Push Notification & Sound Service
+  await RealtimeNotificationService.initialize(navKey: appNavigatorKey);
+
   runApp(const MyApp());
 }
 
@@ -69,6 +76,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: appNavigatorKey,
       debugShowCheckedModeBanner: false,
       title: 'Styluxe',
       theme: AppTheme.lightTheme,

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import '../../../services/inventory_service.dart';
 import '../../../theme/app_theme.dart';
 import 'order_detail_screen.dart';
 import 'order_tracking_screen.dart';
@@ -203,7 +204,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
         toolbarHeight: 46.0,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppColors.slateDark, size: 17),
+          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.slateDark, size: 21),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
@@ -1050,15 +1051,21 @@ class _OrderCardState extends State<OrderCard> {
 
     if (confirm == true) {
       try {
+        final orderId = widget.order['id']?.toString() ?? '';
         await supabase
             .from('orders')
             .update({'status': 'cancelled'})
-            .eq('id', widget.order['id']);
+            .eq('id', orderId);
+
+        // Reverse-count / restore product stock
+        if (orderId.isNotEmpty) {
+          await InventoryService.restoreStockForOrder(orderId);
+        }
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text("Order has been cancelled"),
+              content: Text("Order has been cancelled and stock restored"),
               backgroundColor: AppColors.roseRed,
             ),
           );

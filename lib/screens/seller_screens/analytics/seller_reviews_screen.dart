@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../products/seller_product_detail_screen.dart';
 import '../../../widgets/seller_bottom_nav.dart';
+import '../../../widgets/seller_shimmer_loading.dart';
 
 class SellerReviewsScreen extends StatefulWidget {
   const SellerReviewsScreen({super.key});
@@ -371,7 +372,7 @@ class _SellerReviewsScreenState extends State<SellerReviewsScreen> {
         ],
       ),
       body: isLoading
-          ? const Center(child: CircularProgressIndicator(color: sapphireBlue))
+          ? const SellerOrdersShimmer()
           : RefreshIndicator(
               onRefresh: fetchSellerReviews,
               color: sapphireBlue,

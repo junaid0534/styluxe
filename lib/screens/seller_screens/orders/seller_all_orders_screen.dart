@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'seller_order_invoice_screen.dart';
 import '../../../widgets/seller_bottom_nav.dart';
+import '../../../widgets/seller_shimmer_loading.dart';
 
 class SellerAllOrdersScreen extends StatefulWidget {
   const SellerAllOrdersScreen({super.key});
@@ -160,10 +162,11 @@ class _SellerAllOrdersScreenState extends State<SellerAllOrdersScreen> {
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
         elevation: 0,
+        toolbarHeight: 42.0,
         centerTitle: true,
         title: const Text(
           "All Orders History",
-          style: TextStyle(color: slateDark, fontSize: 18, fontWeight: FontWeight.w900),
+          style: TextStyle(color: slateDark, fontSize: 17.5, fontWeight: FontWeight.w900, letterSpacing: -0.3),
         ),
         actions: [
           IconButton(
@@ -175,7 +178,7 @@ class _SellerAllOrdersScreenState extends State<SellerAllOrdersScreen> {
         ],
       ),
       body: isLoading
-          ? const Center(child: CircularProgressIndicator(color: sapphireBlue))
+          ? const SellerOrdersShimmer()
           : RefreshIndicator(
               onRefresh: fetchSellerOrders,
               color: sapphireBlue,
@@ -441,7 +444,10 @@ class _SellerAllOrdersScreenState extends State<SellerAllOrdersScreen> {
                     status.toUpperCase(),
                     style: TextStyle(color: badgeColor, fontSize: 10, fontWeight: FontWeight.w900),
                   ),
-                ),
+                )
+                    .animate(onPlay: (c) => c.repeat(reverse: true))
+                    .scale(begin: const Offset(0.92, 0.92), end: const Offset(1.08, 1.08), duration: 1000.ms, curve: Curves.easeInOut)
+                    .shimmer(duration: 1500.ms, color: Colors.white.withValues(alpha: 0.35)),
               ],
             ),
           ),
@@ -502,7 +508,9 @@ class _SellerAllOrdersScreenState extends State<SellerAllOrdersScreen> {
                       final imgUrl = pMap['image_url']?.toString();
                       final qty = (it['quantity'] as num?)?.toInt() ?? 1;
                       final price = (it['price'] as num?)?.toDouble() ?? 0.0;
-                      final pSize = pMap['size']?.toString() ?? 'N/A';
+                      final itmSize = it['selected_size']?.toString() ?? pMap['size']?.toString() ?? 'N/A';
+                      final itmColor = it['selected_color']?.toString() ?? pMap['color']?.toString();
+                      final varDetails = [if (itmColor != null && itmColor.isNotEmpty) "Color: $itmColor", "Size: $itmSize"].join("  •  ");
 
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 8),
@@ -529,7 +537,7 @@ class _SellerAllOrdersScreenState extends State<SellerAllOrdersScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(pName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: slateDark, fontSize: 12.5, fontWeight: FontWeight.w800)),
-                                  Text("Qty: $qty  •  Size: $pSize", style: const TextStyle(color: slateMuted, fontSize: 11)),
+                                  Text("Qty: $qty  •  $varDetails", style: const TextStyle(color: slateMuted, fontSize: 11)),
                                 ],
                               ),
                             ),
